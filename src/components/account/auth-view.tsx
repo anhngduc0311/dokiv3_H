@@ -176,7 +176,7 @@ export function AuthView({ isRegister = false }: AuthViewProps) {
   return (
     <div className="auth-wrap">
       <section className="auth-panel glass-panel">
-        <Link href="/" className="brand auth-brand" aria-label="DokiTruyen - Trang chủ">
+        <Link href="/" className="brand auth-brand" aria-label="DokiHentai - Trang chủ">
           <img
             className="brand-symbol"
             src="/brand-mark.png"
@@ -186,7 +186,7 @@ export function AuthView({ isRegister = false }: AuthViewProps) {
             aria-hidden="true"
           />
           <span className="brand-wordmark">
-            doki<span>truyen</span>
+            doki<span>hentai</span>
             <span className="brand-period">.</span>
           </span>
         </Link>
@@ -317,7 +317,7 @@ export function AuthView({ isRegister = false }: AuthViewProps) {
             {isRegister ? 'Đăng nhập ngay' : 'Đăng ký ngay'}
           </Link>
         </div>
-        <small className="auth-note muted">DokiTruyen · Nền tảng đọc truyện online miễn phí</small>
+        <small className="auth-note muted">DokiHentai · Nền tảng đọc truyện online miễn phí</small>
       </section>
     </div>
   );

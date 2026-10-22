@@ -143,7 +143,7 @@ function HomeContent() {
     const raw = descriptions[m.id] || m.description;
     const cleaned = cleanDescription(raw);
     return cleaned === 'Chưa có mô tả cho bộ truyện này.'
-      ? 'Khám phá câu chuyện mới, theo dõi chương mới nhất và tiếp tục hành trình cùng DokiTruyen.'
+      ? 'Khám phá câu chuyện mới, theo dõi chương mới nhất và tiếp tục hành trình cùng DokiHentai.'
       : cleaned;
   };
 
@@ -378,7 +378,7 @@ function HomeContent() {
                       : 'Manga'}
                 </span>
                 <span>Romance</span>
-                <span>DokiTruyen</span>
+                <span>DokiHentai</span>
               </div>
               <h1>{currentSpotlight.title}</h1>
               <p>{spotlightDescription(currentSpotlight)}</p>
@@ -441,7 +441,7 @@ function HomeContent() {
           </>
         ) : (
           <div className="spotlight-content">
-            <span className="spotlight-eyebrow">KHÁM PHÁ DOKITRUYEN</span>
+            <span className="spotlight-eyebrow">KHÁM PHÁ DOKIHENTAI</span>
             <h1>
               Mỗi trang truyện,
               <br />

@@ -33,7 +33,7 @@ export function MobileDrawer({
       <aside className="mobile-drawer glass-panel" onClick={e => e.stopPropagation()}>
         {/* Drawer Header */}
         <div className="drawer-header">
-          <Link href="/" className="brand" aria-label="DokiTruyen - Trang chủ" onClick={onClose}>
+          <Link href="/" className="brand" aria-label="DokiHentai - Trang chủ" onClick={onClose}>
             <img
               className="brand-symbol"
               src="/brand-mark.png"
@@ -43,7 +43,7 @@ export function MobileDrawer({
               aria-hidden="true"
             />
             <span className="brand-wordmark">
-              doki<span>truyen</span>
+              doki<span>hentai</span>
               <span className="brand-period">.</span>
             </span>
           </Link>
@@ -134,7 +134,7 @@ export function MobileDrawer({
           <Link href="/tim-truyen-nang-cao?demographic=shoujo" onClick={onClose}>
             <Icon name="heart" /> <span>Truyện Con gái (Shoujo)</span>
           </Link>
-          <a href="https://dokitruyen.com" target="_blank" rel="noopener noreferrer">
+          <a href="https://dokihentai.com" target="_blank" rel="noopener noreferrer">
             <Icon name="book" /> <span>Light Novel ↗</span>
           </a>
 

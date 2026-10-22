@@ -3,7 +3,7 @@ import { sql, ensureDbInitialized } from '@/lib/db';
 
 export async function GET(req: Request) {
   await ensureDbInitialized();
-  const host = req.headers.get('x-forwarded-host') || req.headers.get('host') || 'dokitruyen.com';
+  const host = req.headers.get('x-forwarded-host') || req.headers.get('host') || 'dokihentai.com';
   const proto = req.headers.get('x-forwarded-proto') || 'https';
   const baseUrl = `${proto}://${host}`;
 

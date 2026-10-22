@@ -193,7 +193,7 @@ export function Header({
         </button>
 
         {/* Brand Logo */}
-        <Link href="/" className="brand" aria-label="DokiTruyen - Trang chủ">
+        <Link href="/" className="brand" aria-label="DokiHentai - Trang chủ">
           <img
             className="brand-symbol"
             src="/brand-mark.png"
@@ -203,7 +203,7 @@ export function Header({
             aria-hidden="true"
           />
           <span className="brand-wordmark">
-            doki<span>truyen</span>
+            doki<span>hentai</span>
             <span className="brand-period">.</span>
           </span>
         </Link>
@@ -457,7 +457,7 @@ export function Header({
                             <p className="notif-message">{n.message}</p>
                             <div className="notif-meta">
                               <span className="notif-manga-title">
-                                {n.type === 'welcome' ? 'Hệ thống DokiTruyen' : n.mangaTitle}
+                                {n.type === 'welcome' ? 'Hệ thống DokiHentai' : n.mangaTitle}
                               </span>
                               <span className="notif-dot">•</span>
                               <span className="notif-time">{ago(n.createdAt)} trước</span>

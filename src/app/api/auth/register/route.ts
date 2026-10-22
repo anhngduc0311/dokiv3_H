@@ -36,8 +36,8 @@ export async function POST(req: Request) {
       await sql`
         INSERT INTO "Notifications" ("Id", "UserId", "ActorName", "MangaTitle", "Type", "Message", "CreatedAt")
         VALUES (
-          ${uuidv4()}, ${userId}, 'DokiTruyen', 'Hệ thống DokiTruyen', 'welcome',
-          ${'Chào mừng ' + name + ' đã đến với DokiTruyen! Chúc bạn có những phút giây đọc truyện thật vui vẻ 🎉'},
+          ${uuidv4()}, ${userId}, 'DokiHentai', 'Hệ thống DokiHentai', 'welcome',
+          ${'Chào mừng ' + name + ' đã đến với DokiHentai! Chúc bạn có những phút giây đọc truyện thật vui vẻ 🎉'},
           CURRENT_TIMESTAMP
         );
       `;

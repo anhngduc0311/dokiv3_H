@@ -5,32 +5,32 @@ import { StoreProvider } from '../contexts/store-context';
 import { AppShell } from '../components/layout/app-shell';
 
 export const metadata: Metadata = {
-  title: 'DokiTruyen - Đọc Truyện Tranh Online Miễn Phí (Manga, Manhwa, Manhua Mới Nhất) | dokitruyen.com',
+  title: 'DokiHentai - Đọc Truyện Tranh Online Miễn Phí (Manga, Manhwa, Manhua Mới Nhất) | dokihentai.com',
   description:
-    '🔥 DokiTruyen (dokitruyen.com) - Trang web đọc truyện tranh online miễn phí cập nhật mới nhất mỗi ngày. Hơn 10,000+ bộ Manga, Manhwa, Manhua tiếng Việt Full HD load cực nhanh!',
+    '🔥 DokiHentai (dokihentai.com) - Trang web đọc truyện tranh online miễn phí cập nhật mới nhất mỗi ngày. Hơn 10,000+ bộ Manga, Manhwa, Manhua tiếng Việt Full HD load cực nhanh!',
   keywords:
-    'dokitruyen, doki truyen, dokitruyen com, doc truyen tranh, truyen tranh online, manga, manhwa, manhua, doki truyện, truyen tranh moi nhat, doc manga full hd',
-  authors: [{ name: 'DokiTruyen' }],
-  metadataBase: new URL('https://dokitruyen.com'),
+    'dokihentai, doki hentai, dokihentai com, doc truyen tranh, truyen tranh online, manga, manhwa, manhua, doki truyện, truyen tranh moi nhat, doc manga full hd',
+  authors: [{ name: 'DokiHentai' }],
+  metadataBase: new URL('https://dokihentai.com'),
   icons: {
     icon: '/favicon.svg'
   },
   openGraph: {
-    siteName: 'DokiTruyen',
-    title: 'DokiTruyen - Đọc Truyện Tranh Online Miễn Phí Mới Nhất',
+    siteName: 'DokiHentai',
+    title: 'DokiHentai - Đọc Truyện Tranh Online Miễn Phí Mới Nhất',
     description:
-      '🔥 DokiTruyen (dokitruyen.com) - Trang đọc truyện tranh online miễn phí cập nhật mới nhất mỗi ngày. Đọc Manga, Manhwa, Manhua tiếng Việt Full HD load siêu mượt!',
-    url: 'https://dokitruyen.com/',
+      '🔥 DokiHentai (dokihentai.com) - Trang đọc truyện tranh online miễn phí cập nhật mới nhất mỗi ngày. Đọc Manga, Manhwa, Manhua tiếng Việt Full HD load siêu mượt!',
+    url: 'https://dokihentai.com/',
     type: 'website',
-    images: ['https://dokitruyen.com/brand-mark.png'],
+    images: ['https://dokihentai.com/brand-mark.png'],
     locale: 'vi_VN'
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'DokiTruyen - Đọc Truyện Tranh Online Miễn Phí Mới Nhất',
+    title: 'DokiHentai - Đọc Truyện Tranh Online Miễn Phí Mới Nhất',
     description:
-      '🔥 DokiTruyen (dokitruyen.com) - Khám phá và đọc hơn 10,000+ truyện tranh online miễn phí mỗi ngày.',
-    images: ['https://dokitruyen.com/brand-mark.png']
+      '🔥 DokiHentai (dokihentai.com) - Khám phá và đọc hơn 10,000+ truyện tranh online miễn phí mỗi ngày.',
+    images: ['https://dokihentai.com/brand-mark.png']
   },
   robots: {
     index: true,
@@ -52,20 +52,20 @@ const jsonLd = {
   '@graph': [
     {
       '@type': 'WebSite',
-      '@id': 'https://dokitruyen.com/#website',
-      url: 'https://dokitruyen.com/',
-      name: 'DokiTruyen',
-      alternateName: ['Doki Truyện', 'dokitruyen', 'dokitruyen.com', 'DokiTruyện'],
+      '@id': 'https://dokihentai.com/#website',
+      url: 'https://dokihentai.com/',
+      name: 'DokiHentai',
+      alternateName: ['Doki Hentai', 'dokihentai', 'dokihentai.com', 'DokiHentai'],
       description: 'Website đọc truyện tranh online miễn phí cập nhật mới nhất mỗi ngày',
       publisher: {
-        '@id': 'https://dokitruyen.com/#organization'
+        '@id': 'https://dokihentai.com/#organization'
       },
       potentialAction: [
         {
           '@type': 'SearchAction',
           target: {
             '@type': 'EntryPoint',
-            urlTemplate: 'https://dokitruyen.com/tim-truyen-nang-cao?q={search_term_string}'
+            urlTemplate: 'https://dokihentai.com/tim-truyen-nang-cao?q={search_term_string}'
           },
           'query-input': 'required name=search_term_string'
         }
@@ -74,14 +74,14 @@ const jsonLd = {
     },
     {
       '@type': 'Organization',
-      '@id': 'https://dokitruyen.com/#organization',
-      name: 'DokiTruyen',
-      alternateName: ['Doki Truyện', 'dokitruyen', 'dokitruyen.com'],
-      url: 'https://dokitruyen.com/',
+      '@id': 'https://dokihentai.com/#organization',
+      name: 'DokiHentai',
+      alternateName: ['Doki Hentai', 'dokihentai', 'dokihentai.com'],
+      url: 'https://dokihentai.com/',
       logo: {
         '@type': 'ImageObject',
-        url: 'https://dokitruyen.com/brand-mark.png',
-        caption: 'DokiTruyen Logo'
+        url: 'https://dokihentai.com/brand-mark.png',
+        caption: 'DokiHentai Logo'
       }
     }
   ]
@@ -117,11 +117,11 @@ export default function RootLayout({
                 src="/brand-mark.png"
                 width={64}
                 height={64}
-                alt="DokiTruyen Logo"
+                alt="DokiHentai Logo"
               />
             </div>
             <div className="splash-brand">
-              doki<span>truyen</span>
+              doki<span>hentai</span>
               <span className="splash-dot">.</span>
             </div>
             <div className="splash-loader">

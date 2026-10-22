@@ -8,7 +8,7 @@ export function Footer() {
     <footer className="site-footer">
       <div className="footer-inner">
         <div>
-          <Link href="/" className="brand" aria-label="DokiTruyen - Trang chủ">
+          <Link href="/" className="brand" aria-label="DokiHentai - Trang chủ">
             <img
               className="brand-symbol"
               src="/brand-mark.png"
@@ -18,17 +18,17 @@ export function Footer() {
               aria-hidden="true"
             />
             <span className="brand-wordmark">
-              doki<span>truyen</span>
+              doki<span>hentai</span>
               <span className="brand-period">.</span>
             </span>
           </Link>
           <p>
-            <strong>DokiTruyen (Doki Truyện - dokitruyen.com)</strong> — Trang đọc truyện tranh
+            <strong>DokiHentai (Doki Hentai - dokihentai.com)</strong> — Trang đọc truyện tranh
             online miễn phí cập nhật mới nhất mỗi ngày. Đọc Manga, Manhwa, Manhua tiếng Việt bản
             dịch chất lượng cao, hình ảnh sắc nét và tối ưu mượt mà trên điện thoại và máy tính.
           </p>
           <small className="footer-copy">
-            © 2026 DokiTruyen · Website đọc truyện tranh online
+            © 2026 DokiHentai · Website đọc truyện tranh online
           </small>
         </div>
         <div>

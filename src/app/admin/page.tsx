@@ -926,7 +926,7 @@ export default function AdminPage() {
       const url = URL.createObjectURL(zipBlob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `[DokiTruyen]_${safeMangaTitle}_Chap_${firstNum}_den_${lastNum}.zip`;
+      a.download = `[DokiHentai]_${safeMangaTitle}_Chap_${firstNum}_den_${lastNum}.zip`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -1257,9 +1257,9 @@ export default function AdminPage() {
         <header className="admin-topbar">
           <div className="topbar-left">
             <Link href="/" className="admin-brand">
-              <img src="/brand-mark.png" width="32" height="32" alt="DokiTruyen" className="brand-logo" />
+              <img src="/brand-mark.png" width="32" height="32" alt="DokiHentai" className="brand-logo" />
               <span className="brand-text">
-                doki<span>truyen</span>
+                doki<span>hentai</span>
                 <span className="period">.</span>
               </span>
             </Link>
@@ -1378,7 +1378,7 @@ export default function AdminPage() {
             <div className="sidebar-footer">
               <div className="system-status">
                 <span className="status-dot online"></span>
-                <span>DokiTruyen Online</span>
+                <span>DokiHentai Online</span>
               </div>
               <small className="version">v2.4.0 Studio Edition</small>
             </div>
@@ -1395,7 +1395,7 @@ export default function AdminPage() {
                   <div>
                     <h1 className="pane-title">Bảng điều khiển tổng quan</h1>
                     <p className="pane-subtitle">
-                      Số liệu thời gian thực và chỉ số hoạt động toàn hệ thống DokiTruyen
+                      Số liệu thời gian thực và chỉ số hoạt động toàn hệ thống DokiHentai
                     </p>
                   </div>
                   <div className="pane-actions">

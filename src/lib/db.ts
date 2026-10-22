@@ -189,10 +189,10 @@ export async function ensureDbInitialized() {
     `;
 
     // 2. Ensure default administrator user
-    const adminEmail = (process.env.ADMIN_EMAIL || 'admin@dokitruyen.com').trim().toLowerCase();
-    const adminPassword = process.env.ADMIN_PASSWORD || 'Admin@DokiTruyen2026!';
+    const adminEmail = (process.env.ADMIN_EMAIL || 'admin@dokihentai.com').trim().toLowerCase();
+    const adminPassword = process.env.ADMIN_PASSWORD || 'Admin@DokiHentai2026!';
     const existingAdmin = await sql`
-      SELECT "Id" FROM "Users" WHERE "Email" = ${adminEmail} OR "Role" = 'admin' OR "Role" = 'superadmin' LIMIT 1;
+      SELECT "Id" FROM "Users" WHERE "Email" = ${adminEmail} OR "Email" = 'admin@dokitruyen.com' OR "Role" = 'admin' OR "Role" = 'superadmin' LIMIT 1;
     `;
 
     if (!existingAdmin || existingAdmin.length === 0) {
