@@ -9,5 +9,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ name: st
 
   const decodedName = decodeURIComponent(name || '');
   const data = await getAuthorManga(decodedName, page, pageSize);
+  if (!data || !data.items || data.items.length === 0) {
+    return NextResponse.json({ items: [], total: 0, page, pageSize }, { status: 404 });
+  }
   return NextResponse.json(data);
 }

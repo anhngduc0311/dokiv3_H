@@ -12,5 +12,8 @@ export async function GET(req: Request) {
   }
 
   const data = await getAuthorManga(name.trim(), page, pageSize);
+  if (!data || !data.items || data.items.length === 0) {
+    return NextResponse.json({ items: [], total: 0, page, pageSize }, { status: 404 });
+  }
   return NextResponse.json(data);
 }

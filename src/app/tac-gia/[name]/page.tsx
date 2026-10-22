@@ -68,7 +68,7 @@ function AuthorContent() {
     setError('');
 
     const cached = api.getCached<Page<Manga>>(path);
-    if (cached && cached.items) {
+    if (cached && cached.items && cached.items.length > 0) {
       setItems(cached.items);
       setTotal(cached.total);
       setLoading(false);

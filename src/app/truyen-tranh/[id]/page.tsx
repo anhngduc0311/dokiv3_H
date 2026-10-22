@@ -322,11 +322,11 @@ function MangaDetailContent() {
   };
 
   const getAuthors = (authorStr?: string): string[] => {
-    if (!authorStr || authorStr === 'Đang cập nhật') return [];
+    if (!authorStr || authorStr === 'Đang cập nhật' || authorStr === 'Chưa rõ' || authorStr === 'Unknown') return [];
     return authorStr
       .split(/[\/,]/)
       .map(a => a.trim())
-      .filter(a => a.length > 0 && a !== 'Đang cập nhật');
+      .filter(a => a.length > 0 && a !== 'Đang cập nhật' && a !== 'Chưa rõ' && a !== 'Unknown');
   };
 
   const findGenre = async (name: string) => {

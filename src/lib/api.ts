@@ -38,12 +38,16 @@ async function clientFallback<T>(path: string): Promise<T | null> {
       return (await clientSearch(p)) as unknown as T;
     }
 
-    // 4. Author
-    if (pathname === '/catalog/author') {
-      const author = params.get('name') || '';
+    // 4. Author: /catalog/author?name=... OR /catalog/author/:name
+    const authorMatch = pathname.match(/^\/catalog\/author\/(.+)$/);
+    if (pathname === '/catalog/author' || authorMatch) {
+      const author = authorMatch
+        ? decodeURIComponent(authorMatch[1])
+        : params.get('name') || '';
       const page = Number(params.get('page')) || 1;
       const pageSize = Number(params.get('pageSize')) || 24;
-      return (await clientSearch({ author, page, pageSize })) as unknown as T;
+      const sort = params.get('sort') || '';
+      return (await clientSearch({ author, page, pageSize, sort })) as unknown as T;
     }
 
     // 5. Tags
