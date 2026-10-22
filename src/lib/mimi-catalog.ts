@@ -175,7 +175,9 @@ export async function getMimiCatalog(filters: MimiCatalogFilters): Promise<Catal
     pageSize: res.page_size || pageSize
   };
 
-  await cacheSet(cacheKey, result, 120);
+  if (items.length > 0) {
+    await cacheSet(cacheKey, result, 120);
+  }
   return result;
 }
 

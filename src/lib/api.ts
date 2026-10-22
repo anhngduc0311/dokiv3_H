@@ -1,5 +1,83 @@
 import { Manga, Page } from '../types';
 import { getStoredToken } from './utils';
+import {
+  clientGetHome,
+  clientGetFeatured,
+  clientSearch,
+  clientGetDetail,
+  clientGetChapters,
+  clientGetReader,
+  clientGetTags
+} from './mimi-client';
+
+async function clientFallback<T>(path: string): Promise<T | null> {
+  if (typeof window === 'undefined') return null;
+
+  try {
+    const [pathname, qs] = path.split('?');
+    const params = new URLSearchParams(qs || '');
+
+    // 1. Home
+    if (pathname === '/catalog/home') {
+      const page = Number(params.get('page')) || 1;
+      const pageSize = Number(params.get('pageSize')) || 30;
+      return (await clientGetHome(page, pageSize)) as unknown as T;
+    }
+
+    // 2. Featured
+    if (pathname === '/catalog/featured') {
+      const limit = Number(params.get('limit')) || 20;
+      const page = Number(params.get('page')) || 1;
+      return (await clientGetFeatured(limit, page)) as unknown as T;
+    }
+
+    // 3. Search
+    if (pathname === '/catalog/search') {
+      const p: Record<string, string | number> = {};
+      params.forEach((val, key) => { p[key] = val; });
+      return (await clientSearch(p)) as unknown as T;
+    }
+
+    // 4. Author
+    if (pathname === '/catalog/author') {
+      const author = params.get('name') || '';
+      const page = Number(params.get('page')) || 1;
+      const pageSize = Number(params.get('pageSize')) || 24;
+      return (await clientSearch({ author, page, pageSize })) as unknown as T;
+    }
+
+    // 5. Tags
+    if (pathname === '/catalog/tags') {
+      return (await clientGetTags()) as unknown as T;
+    }
+
+    // 6. Chapters list: /catalog/:id/chapters
+    const chaptersMatch = pathname.match(/^\/catalog\/([^/]+)\/chapters$/);
+    if (chaptersMatch) {
+      const mangaId = chaptersMatch[1];
+      const ascending = params.get('ascending') === 'true';
+      return (await clientGetChapters(mangaId, ascending)) as unknown as T;
+    }
+
+    // 7. Manga detail: /catalog/:id
+    const detailMatch = pathname.match(/^\/catalog\/([^/]+)$/);
+    if (detailMatch) {
+      const mangaId = detailMatch[1];
+      return (await clientGetDetail(mangaId)) as unknown as T;
+    }
+
+    // 8. Reader: /chapters/:id
+    const readerMatch = pathname.match(/^\/chapters\/([^/]+)$/);
+    if (readerMatch) {
+      const chapterId = readerMatch[1];
+      return (await clientGetReader(chapterId)) as unknown as T;
+    }
+  } catch (err) {
+    console.warn('[ClientFallback Error]', path, err);
+  }
+
+  return null;
+}
 
 export class ApiClient {
   private cache = new Map<string, { data: unknown; expiry: number }>();
@@ -81,13 +159,13 @@ export class ApiClient {
       }
     }
     const token = getStoredToken();
-    const maxRetries = isGet ? 2 : 0;
+    const maxRetries = isGet ? 1 : 0;
     let lastError: unknown;
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
         if (attempt > 0) {
-          await new Promise(r => setTimeout(r, attempt * 800));
+          await new Promise(r => setTimeout(r, attempt * 500));
         }
         const response = await fetch('/api' + path, {
           method,
@@ -99,6 +177,17 @@ export class ApiClient {
         });
 
         if (!response.ok) {
+          // If server fails (e.g. 403 / 502 / 404 from Cloudflare block on Vercel), fallback to direct MimiHentai
+          if (isGet && (path.startsWith('/catalog/') || path.startsWith('/chapters/'))) {
+            const fallback = await clientFallback<T>(path);
+            if (fallback) {
+              if (shouldCache) {
+                this.cache.set(path, { data: fallback, expiry: Date.now() + 15 * 60 * 1000 });
+              }
+              return fallback;
+            }
+          }
+
           if (isGet && attempt < maxRetries && [500, 502, 503, 504].includes(response.status)) {
             continue;
           }
@@ -117,6 +206,19 @@ export class ApiClient {
         }
 
         const result = response.status === 204 ? (undefined as T) : await response.json();
+
+        // If server returned an empty page because Vercel was blocked by Cloudflare (403 on backend)
+        const isMangaList = path.startsWith('/catalog/home') || path.startsWith('/catalog/featured') || path.startsWith('/catalog/search');
+        if (isMangaList && result && typeof result === 'object' && Array.isArray((result as any).items) && (result as any).items.length === 0) {
+          const fallback = await clientFallback<T>(path);
+          if (fallback && Array.isArray((fallback as any).items) && (fallback as any).items.length > 0) {
+            if (shouldCache) {
+              this.cache.set(path, { data: fallback, expiry: Date.now() + 15 * 60 * 1000 });
+            }
+            return fallback;
+          }
+        }
+
         if (shouldCache) {
           const isSearch = path.startsWith('/catalog/search') || path.startsWith('/catalog/author');
           const isEmpty =
@@ -132,6 +234,18 @@ export class ApiClient {
         return result;
       } catch (err) {
         lastError = err;
+
+        // Try client-side fallback before giving up
+        if (isGet && (path.startsWith('/catalog/') || path.startsWith('/chapters/'))) {
+          const fallback = await clientFallback<T>(path);
+          if (fallback) {
+            if (shouldCache) {
+              this.cache.set(path, { data: fallback, expiry: Date.now() + 15 * 60 * 1000 });
+            }
+            return fallback;
+          }
+        }
+
         if (isGet && attempt < maxRetries && !(err instanceof Error && err.message.includes('đăng nhập'))) {
           continue;
         }

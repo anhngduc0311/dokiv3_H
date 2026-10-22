@@ -179,7 +179,9 @@ export async function searchCatalog(params: CatalogFilters): Promise<CatalogPage
     pageSize
   };
 
-  await cacheSet(cacheKey, result, 120);
+  if (result.items.length > 0) {
+    await cacheSet(cacheKey, result, 120);
+  }
   return result;
 }
 
