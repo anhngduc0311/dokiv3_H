@@ -9,5 +9,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const language = searchParams.get('language') === 'en' ? 'en' : 'vi';
 
   const data = await getMangaChapters(id, page, ascending, language);
+  if (!data || !data.items || data.items.length === 0) {
+    return NextResponse.json({ items: [], total: 0, page, pageSize: 1000 }, { status: 404 });
+  }
   return NextResponse.json(data);
 }

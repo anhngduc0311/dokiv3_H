@@ -128,8 +128,16 @@ function MangaDetailContent() {
   const loadManga = async (n: number) => {
     try {
       const m = await api.request<Manga>('/catalog/' + id, 'GET', undefined, true);
-      if (n === epochRef.current) {
+      if (n === epochRef.current && m) {
         setManga(m);
+        if (m.chapters && m.chapters.length > 0) {
+          setChapters(prev => prev.length === 0 ? m.chapters : prev);
+          setChapterTotal(prev => prev === 0 ? (m.totalChapters || m.chapters.length) : prev);
+          if (!firstChapter) {
+            const sorted = [...m.chapters].sort((a, b) => a.number - b.number);
+            setFirstChapter(sorted[0]);
+          }
+        }
       }
     } catch (e) {
       if (n === epochRef.current && !manga) {
@@ -151,9 +159,9 @@ function MangaDetailContent() {
       });
 
     const cached = api.getCached<Page<Chapter>>(chapPath);
-    if (cached && cached.items) {
+    if (cached && cached.items && cached.items.length > 0) {
       setChapters(cached.items);
-      setChapterTotal(cached.total);
+      setChapterTotal(cached.total || cached.items.length);
       setChapterLoading(false);
       return;
     }
@@ -162,9 +170,13 @@ function MangaDetailContent() {
     setChapterError('');
     try {
       const r = await api.request<Page<Chapter>>(chapPath, 'GET', undefined, true);
-      if (n === chapterEpochRef.current) {
-        setChapters(r.items || []);
-        setChapterTotal(r.total || 0);
+      if (n === chapterEpochRef.current && r && Array.isArray(r.items)) {
+        setChapters(r.items);
+        setChapterTotal(r.total || r.items.length);
+        if (r.items.length > 0 && !firstChapter) {
+          const sorted = [...r.items].sort((a, b) => a.number - b.number);
+          setFirstChapter(sorted[0]);
+        }
       }
     } catch (e) {
       if (n === chapterEpochRef.current && !chapters.length) {
@@ -283,6 +295,11 @@ function MangaDetailContent() {
       router.push(`/chuong/${firstChapter.id}`);
       return;
     }
+    if (chapters.length > 0) {
+      const sorted = [...chapters].sort((a, b) => a.number - b.number);
+      router.push(`/chuong/${sorted[0].id}`);
+      return;
+    }
     setReading(true);
     try {
       const r = await api.request<Page<Chapter>>(
@@ -291,14 +308,14 @@ function MangaDetailContent() {
         undefined,
         true
       );
-      if (r.items[0]) {
+      if (r && r.items && r.items[0]) {
         setFirstChapter(r.items[0]);
         router.push(`/chuong/${r.items[0].id}`);
       } else {
-        store.notify('Chưa có chương ở ngôn ngữ này. Hãy thử đổi sang ngôn ngữ Tiếng Anh.');
+        router.push(`/chuong/${id}`);
       }
-    } catch (e) {
-      store.notify(message(e));
+    } catch {
+      router.push(`/chuong/${id}`);
     } finally {
       setReading(false);
     }

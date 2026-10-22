@@ -251,7 +251,7 @@ function ReaderContent() {
   };
 
   const position = (currentData: ReaderData | null) => {
-    return currentData?.navigation.findIndex(c => c.id === id) ?? -1;
+    return currentData?.navigation.findIndex(c => c.id === id || c.id === currentData.chapter.id) ?? -1;
   };
 
   const previous = (currentData: ReaderData | null) => {

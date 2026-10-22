@@ -208,26 +208,42 @@ export class ApiClient {
         const result = response.status === 204 ? (undefined as T) : await response.json();
 
         // If server returned an empty page because Vercel was blocked by Cloudflare (403 on backend)
-        const isMangaList = path.startsWith('/catalog/home') || path.startsWith('/catalog/featured') || path.startsWith('/catalog/search');
-        if (isMangaList && result && typeof result === 'object' && Array.isArray((result as any).items) && (result as any).items.length === 0) {
+        const isCatalogGet = isGet && (path.startsWith('/catalog/') || path.startsWith('/chapters/'));
+        const isEmptyItems =
+          result &&
+          typeof result === 'object' &&
+          'items' in (result as any) &&
+          Array.isArray((result as any).items) &&
+          (result as any).items.length === 0;
+        const isEmptyArray = Array.isArray(result) && result.length === 0;
+
+        if (isCatalogGet && (isEmptyItems || isEmptyArray)) {
           const fallback = await clientFallback<T>(path);
-          if (fallback && Array.isArray((fallback as any).items) && (fallback as any).items.length > 0) {
-            if (shouldCache) {
-              this.cache.set(path, { data: fallback, expiry: Date.now() + 15 * 60 * 1000 });
+          if (fallback) {
+            const hasItems =
+              typeof fallback === 'object' &&
+              'items' in (fallback as any) &&
+              Array.isArray((fallback as any).items) &&
+              (fallback as any).items.length > 0;
+            const hasArray = Array.isArray(fallback) && fallback.length > 0;
+            if (hasItems || hasArray) {
+              if (shouldCache) {
+                this.cache.set(path, { data: fallback, expiry: Date.now() + 15 * 60 * 1000 });
+              }
+              return fallback;
             }
-            return fallback;
           }
         }
 
         if (shouldCache) {
-          const isSearch = path.startsWith('/catalog/search') || path.startsWith('/catalog/author');
           const isEmpty =
-            result &&
-            typeof result === 'object' &&
-            'items' in (result as any) &&
-            Array.isArray((result as any).items) &&
-            (result as any).items.length === 0;
-          if (!isSearch || !isEmpty) {
+            (result &&
+              typeof result === 'object' &&
+              'items' in (result as any) &&
+              Array.isArray((result as any).items) &&
+              (result as any).items.length === 0) ||
+            (Array.isArray(result) && result.length === 0);
+          if (!isEmpty) {
             this.cache.set(path, { data: result, expiry: Date.now() + 15 * 60 * 1000 });
           }
         }

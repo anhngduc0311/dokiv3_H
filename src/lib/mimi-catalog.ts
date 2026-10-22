@@ -48,6 +48,42 @@ export function mapMimiManga(m: any): MangaCard {
 
   const idStr = String(m.id);
   const chapterCount = Number(m.chapter_count || 0);
+  const chapters: ChapterCard[] = [];
+  if (chapterCount > 0) {
+    if (chapterCount === 1) {
+      chapters.push({
+        id: `${idStr}_chap_1`,
+        mangaId: idStr,
+        title: 'Oneshot',
+        number: 1,
+        language: 'vi',
+        publishedAt: m.last_updated ? new Date(m.last_updated).toISOString() : new Date().toISOString(),
+        group: 'MimiHentai',
+        contentType: 'comic'
+      });
+    } else {
+      chapters.push({
+        id: `${idStr}_chap_${chapterCount}`,
+        mangaId: idStr,
+        title: `Chap ${chapterCount}`,
+        number: chapterCount,
+        language: 'vi',
+        publishedAt: m.last_updated ? new Date(m.last_updated).toISOString() : new Date().toISOString(),
+        group: 'MimiHentai',
+        contentType: 'comic'
+      });
+      chapters.push({
+        id: `${idStr}_chap_1`,
+        mangaId: idStr,
+        title: 'Chap 1',
+        number: 1,
+        language: 'vi',
+        publishedAt: m.last_updated ? new Date(m.last_updated).toISOString() : new Date().toISOString(),
+        group: 'MimiHentai',
+        contentType: 'comic'
+      });
+    }
+  }
 
   // Approximate rating from likes/views or 8.5
   let rating = 8.5;
@@ -73,7 +109,7 @@ export function mapMimiManga(m: any): MangaCard {
     views: Number(m.view || 0),
     follows: Number(m.follows || 0),
     updatedAt: m.last_updated ? new Date(m.last_updated).toISOString() : new Date().toISOString(),
-    chapters: [],
+    chapters,
     chaptersCount: chapterCount,
     totalChapters: chapterCount
   };
@@ -243,12 +279,39 @@ export async function getMimiReader(chapterId: string): Promise<ReaderData | nul
   const cached = await cacheGet<ReaderData>(cacheKey);
   if (cached) return cached;
 
-  const data = await mimiFetch<{
+  let resolvedChapterId = chapterId;
+
+  // 1. Handle synthetic IDs like "70655_chap_1"
+  if (chapterId.includes('_chap_')) {
+    const parts = chapterId.split('_chap_');
+    const mangaId = parts[0];
+    const targetOrder = Number(parts[1]) || 1;
+    const rawChapters = await mimiFetch<any[]>(`/manga/${encodeURIComponent(mangaId)}/chapters`);
+    if (Array.isArray(rawChapters) && rawChapters.length > 0) {
+      const match = rawChapters.find(c => Number(c.order) === targetOrder) || rawChapters[0];
+      if (match?.id) resolvedChapterId = String(match.id);
+    }
+  }
+
+  // 2. Fetch chapter data from MimiHentai
+  let data = await mimiFetch<{
     info: any;
     next: any;
     prev: any;
     pages: Array<{ image_url: string }>;
-  }>(`/chapters/${encodeURIComponent(chapterId)}`);
+  }>(`/chapters/${encodeURIComponent(resolvedChapterId)}`);
+
+  // 3. Fallback: If chapter not found, maybe chapterId was actually a manga ID
+  if ((!data || !data.info) && !chapterId.includes('_chap_')) {
+    const rawChapters = await mimiFetch<any[]>(`/manga/${encodeURIComponent(resolvedChapterId)}/chapters`);
+    if (Array.isArray(rawChapters) && rawChapters.length > 0) {
+      const firstChap = rawChapters[0];
+      if (firstChap?.id) {
+        resolvedChapterId = String(firstChap.id);
+        data = await mimiFetch<any>(`/chapters/${encodeURIComponent(resolvedChapterId)}`);
+      }
+    }
+  }
 
   if (!data || !data.info) return null;
 
