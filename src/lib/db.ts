@@ -32,7 +32,7 @@ export async function ensureDbInitialized() {
 
     await sql`
       CREATE TABLE IF NOT EXISTS "Mangas" (
-        "Id" uuid NOT NULL PRIMARY KEY,
+        "Id" text NOT NULL PRIMARY KEY,
         "Title" character varying(500) NOT NULL,
         "AlternativeTitle" text NOT NULL DEFAULT '',
         "Author" text NOT NULL DEFAULT '',
@@ -58,8 +58,8 @@ export async function ensureDbInitialized() {
 
     await sql`
       CREATE TABLE IF NOT EXISTS "Chapters" (
-        "Id" uuid NOT NULL PRIMARY KEY,
-        "MangaId" uuid NOT NULL REFERENCES "Mangas"("Id") ON DELETE CASCADE,
+        "Id" text NOT NULL PRIMARY KEY,
+        "MangaId" text NOT NULL REFERENCES "Mangas"("Id") ON DELETE CASCADE,
         "Number" numeric NOT NULL DEFAULT 1,
         "Title" text NOT NULL DEFAULT '',
         "Language" text NOT NULL DEFAULT 'vi',
@@ -77,7 +77,7 @@ export async function ensureDbInitialized() {
     await sql`
       CREATE TABLE IF NOT EXISTS "Follows" (
         "UserId" uuid NOT NULL REFERENCES "Users"("Id") ON DELETE CASCADE,
-        "MangaId" uuid NOT NULL REFERENCES "Mangas"("Id") ON DELETE CASCADE,
+        "MangaId" text NOT NULL REFERENCES "Mangas"("Id") ON DELETE CASCADE,
         "CreatedAt" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
         PRIMARY KEY ("UserId", "MangaId")
       );
@@ -86,7 +86,7 @@ export async function ensureDbInitialized() {
     await sql`
       CREATE TABLE IF NOT EXISTS "Ratings" (
         "UserId" uuid NOT NULL REFERENCES "Users"("Id") ON DELETE CASCADE,
-        "MangaId" uuid NOT NULL REFERENCES "Mangas"("Id") ON DELETE CASCADE,
+        "MangaId" text NOT NULL REFERENCES "Mangas"("Id") ON DELETE CASCADE,
         "Score" integer NOT NULL DEFAULT 10,
         PRIMARY KEY ("UserId", "MangaId")
       );
@@ -95,8 +95,8 @@ export async function ensureDbInitialized() {
     await sql`
       CREATE TABLE IF NOT EXISTS "Histories" (
         "UserId" uuid NOT NULL REFERENCES "Users"("Id") ON DELETE CASCADE,
-        "MangaId" uuid NOT NULL REFERENCES "Mangas"("Id") ON DELETE CASCADE,
-        "ChapterId" uuid NOT NULL REFERENCES "Chapters"("Id") ON DELETE CASCADE,
+        "MangaId" text NOT NULL REFERENCES "Mangas"("Id") ON DELETE CASCADE,
+        "ChapterId" text NOT NULL REFERENCES "Chapters"("Id") ON DELETE CASCADE,
         "ReadAt" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
         PRIMARY KEY ("UserId", "MangaId")
       );
@@ -106,7 +106,7 @@ export async function ensureDbInitialized() {
       CREATE TABLE IF NOT EXISTS "Comments" (
         "Id" uuid NOT NULL PRIMARY KEY,
         "UserId" uuid NOT NULL REFERENCES "Users"("Id") ON DELETE CASCADE,
-        "MangaId" uuid NOT NULL REFERENCES "Mangas"("Id") ON DELETE CASCADE,
+        "MangaId" text NOT NULL REFERENCES "Mangas"("Id") ON DELETE CASCADE,
         "ParentId" uuid NULL REFERENCES "Comments"("Id") ON DELETE SET NULL,
         "Body" character varying(2000) NOT NULL,
         "IsFlagged" boolean NOT NULL DEFAULT false,
@@ -120,7 +120,7 @@ export async function ensureDbInitialized() {
         "UserId" uuid NOT NULL REFERENCES "Users"("Id") ON DELETE CASCADE,
         "ActorId" uuid NULL,
         "ActorName" character varying(200) NOT NULL DEFAULT '',
-        "MangaId" uuid NOT NULL,
+        "MangaId" text NOT NULL,
         "MangaTitle" character varying(500) NOT NULL DEFAULT '',
         "CommentId" uuid NULL,
         "Type" character varying(50) NOT NULL DEFAULT 'comment_reply',
@@ -134,8 +134,8 @@ export async function ensureDbInitialized() {
       CREATE TABLE IF NOT EXISTS "Reports" (
         "Id" uuid NOT NULL PRIMARY KEY,
         "UserId" uuid NULL REFERENCES "Users"("Id") ON DELETE SET NULL,
-        "MangaId" uuid NULL REFERENCES "Mangas"("Id") ON DELETE SET NULL,
-        "ChapterId" uuid NULL REFERENCES "Chapters"("Id") ON DELETE SET NULL,
+        "MangaId" text NULL REFERENCES "Mangas"("Id") ON DELETE SET NULL,
+        "ChapterId" text NULL REFERENCES "Chapters"("Id") ON DELETE SET NULL,
         "CommentId" uuid NULL,
         "Type" text NOT NULL DEFAULT 'broken_image',
         "Reason" text NOT NULL DEFAULT '',

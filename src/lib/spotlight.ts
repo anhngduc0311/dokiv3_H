@@ -1,10 +1,7 @@
 import { Manga, BannerImage } from '../types';
 
-export function hasRomanceGenre(manga: Pick<Manga, 'genres'>): boolean {
-  return Array.isArray(manga.genres) && manga.genres.some(genre =>
-    genre.normalize('NFKD').replace(/\p{M}/gu, '').trim().toLocaleLowerCase('vi') === 'romance' ||
-    genre.normalize('NFKD').replace(/\p{M}/gu, '').trim().toLocaleLowerCase('vi') === 'lang man'
-  );
+export function hasRomanceGenre(_manga?: Pick<Manga, 'genres'>): boolean {
+  return true;
 }
 
 // Publish each usable image immediately; a slow CDN must not hold up the hero.
@@ -38,11 +35,10 @@ export async function loadSpotlightImages(
 }
 
 export function bannerImageScore(image: BannerImage): number {
-  if (image.width < 480 || image.height < 320) return 0;
-  const resolution = Math.min(1, image.width / 1440) * 20;
-  // Wide images retain more of their composition in the full-width hero.
+  if (image.width < 300 || image.height < 200) return 0;
+  const resolution = Math.min(1, image.width / 1200) * 20;
   const composition = Math.min(1, image.width / image.height / (16 / 9)) * 15;
-  return resolution + composition;
+  return resolution + composition + 10;
 }
 
 export function rankSpotlightCandidates(
@@ -59,21 +55,14 @@ export function rankSpotlightCandidates(
     const days = Math.max(0, (now - updated) / 86400000);
     return (
       Math.max(0, Math.min(10, m.rating || 0)) * 4 +
-      Math.min(25, Math.log10(1 + Math.max(0, m.follows || 0)) * 5) +
+      Math.min(25, Math.log10(1 + Math.max(0, m.follows || m.views || 0)) * 5) +
       15 / (1 + days / 7) +
       (images ? bannerImageScore(images[m.id]) : 0)
     );
   };
   for (const m of items) {
     if (!m) continue;
-    const chapters = Array.isArray(m.chapters) ? m.chapters : [];
-    if (
-      !m.cover ||
-      m.cover.includes('cover-placeholder') ||
-      (chapters.length > 0 && !chapters.some(c => c.language === 'vi')) ||
-      ['erotica', 'pornographic'].includes(m.contentRating || '')
-    )
-      continue;
+    if (!m.cover || m.cover.includes('cover-placeholder')) continue;
     if (images && (!images[m.id] || bannerImageScore(images[m.id]) === 0)) continue;
     const key = (m.title || m.id).normalize('NFKC').toLocaleLowerCase('vi').trim();
     const existing = unique.get(key);
@@ -83,15 +72,5 @@ export function rankSpotlightCandidates(
 }
 
 export function originalBannerCover(url: string): string {
-  // Upgrade MangaDex thumbnails through the same image CDN, retaining the real cover filename.
-  const prefix = 'https://services.f-ck.me/v1/image/';
-  if (!url.startsWith(prefix)) return url;
-  try {
-    const encoded = url.slice(prefix.length).replace(/-/g, '+').replace(/_/g, '/');
-    const source = atob(encoded);
-    if (!/^https:\/\/mangadex\.org\/covers\//.test(source)) return url;
-    return prefix + btoa(source.replace(/\.(256|512)\.jpg$/, '')).replace(/\+/g, '-').replace(/\//g, '_');
-  } catch {
-    return url;
-  }
+  return url || '';
 }

@@ -9,7 +9,7 @@ export interface Chapter {
 }
 
 export interface Manga {
-  source?: 'mangadex' | 'truyengg';
+  source?: 'mimihentai' | 'mangadex' | 'truyengg';
   id: string;
   title: string;
   alternativeTitle: string;
@@ -24,6 +24,7 @@ export interface Manga {
   year: number | null;
   rating: number;
   follows: number;
+  views?: number;
   updatedAt: string;
   chapters: Chapter[];
   totalChapters?: number;

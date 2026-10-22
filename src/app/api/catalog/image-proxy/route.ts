@@ -12,17 +12,8 @@ export async function GET(req: Request) {
     const uri = new URL(targetUrl);
     let referrer = `${uri.protocol}//${uri.host}/`;
 
-    if (
-      uri.host.includes('truyengg') ||
-      uri.host.includes('hinhhinh') ||
-      uri.host.includes('hinhtruyen') ||
-      uri.host.includes('truyenvua') ||
-      uri.host.includes('tintruyen') ||
-      uri.host.includes('blogspot') ||
-      uri.host.includes('nettruyen') ||
-      uri.host.includes('nettrom')
-    ) {
-      referrer = 'https://truyenggvn.com/';
+    if (uri.host.includes('moe-cdn.net') || uri.host.includes('mimihentai.moe')) {
+      referrer = 'https://mimihentai.moe/';
     }
 
     const res = await fetch(targetUrl, {

@@ -100,7 +100,7 @@ export function MangaCard({ manga, idPrefix = '' }: MangaCardProps) {
           </Link>
         </h3>
         <p className="card-origin">
-          {originText} · {manga.source === 'truyengg' ? 'TruyenGG' : manga.year || 'DokiTruyen'}
+          {originText} · {manga.source === 'mimihentai' ? 'MimiHentai' : manga.source === 'truyengg' ? 'TruyenGG' : manga.year || 'DokiTruyen'}
         </p>
       </div>
       <div className="mini-chapters">

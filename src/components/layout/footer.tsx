@@ -56,8 +56,8 @@ export function Footer() {
             hợp từ các nguồn mở trên internet.
           </p>
           <div className="footer-links">
-            <a href="https://mangadex.org" target="_blank" rel="noopener noreferrer">
-              MangaDex ↗
+            <a href="https://mimihentai.moe" target="_blank" rel="noopener noreferrer">
+              MimiHentai ↗
             </a>
           </div>
         </div>

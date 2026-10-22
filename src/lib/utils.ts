@@ -69,19 +69,6 @@ export function cleanDescription(desc: string | null | undefined): string {
 }
 
 export function proxyImage(url: string): string {
-  if (!url || url.startsWith('https://services.f-ck.me/') || url.startsWith('/api/')) return url;
-  if (url.includes('.mangadex.network/') || url.includes('mangadex.org/')) {
-    return 'https://services.f-ck.me/v1/image/' + btoa(url).replace(/\+/g, '-').replace(/\//g, '_');
-  }
-  if (
-    url.includes('hinhtruyen.com') ||
-    url.includes('hinhhinh.com') ||
-    url.includes('truyenggvn.com') ||
-    url.includes('truyenvua') ||
-    url.includes('tintruyen') ||
-    url.includes('blogspot.com')
-  ) {
-    return '/api/catalog/image-proxy?url=' + encodeURIComponent(url);
-  }
+  if (!url || url.startsWith('/api/')) return url;
   return url;
 }
