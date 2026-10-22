@@ -43,9 +43,19 @@ function SearchContent() {
   useEffect(() => {
     void api
       .request<{ id: string; name: string }[]>('/catalog/tags')
-      .then(r => setTags(r || []))
+      .then(r => {
+        const loadedTags = r || [];
+        setTags(loadedTags);
+        const currentGenre = searchParams.get('genre');
+        if (currentGenre && isNaN(Number(currentGenre))) {
+          const matched = loadedTags.find(t => t.name.toLowerCase() === currentGenre.toLowerCase());
+          if (matched) {
+            setForm(prev => ({ ...prev, genre: matched.id }));
+          }
+        }
+      })
       .catch(() => { });
-  }, []);
+  }, [searchParams]);
 
   useEffect(() => {
     const newForm = getDefaults();

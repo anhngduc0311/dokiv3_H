@@ -353,35 +353,42 @@ export async function getChapterReader(chapterId: string): Promise<ReaderData | 
 
 // 7. TAGS / GENRES
 export async function getTags(): Promise<{ id: string; name: string }[]> {
-  const cacheKey = 'catalog:tags:mimi:v1';
+  const cacheKey = 'catalog:tags:mimi:v2';
   const cached = await cacheGet<{ id: string; name: string }[]>(cacheKey);
-  if (cached) return cached;
+  if (cached && cached.length > 50) return cached;
 
   const [remote, local] = await Promise.allSettled([
     getMimiGenres(),
     (async () => {
       await ensureDbInitialized();
-      const rows = await sql`SELECT "Id", "Name" FROM "TaxonomyItems" WHERE "Type" = 'genre' ORDER BY "Name" ASC`;
-      return rows.map((r: any) => ({ id: r.Id, name: r.Name as string }));
+      const rows = await sql`
+        SELECT "Id", "Name", "Description" 
+        FROM "TaxonomyItems" 
+        WHERE "Type" = 'genre' 
+        ORDER BY "Name" ASC
+      `;
+      return rows.map((r: any) => ({ id: String(r.Id), name: r.Name as string }));
     })()
   ]);
 
   const tags = new Map<string, { id: string; name: string }>();
 
-  if (remote.status === 'fulfilled') {
+  if (remote.status === 'fulfilled' && Array.isArray(remote.value) && remote.value.length > 0) {
     for (const tag of remote.value) {
       if (!tags.has(tag.name.toLowerCase())) tags.set(tag.name.toLowerCase(), tag);
     }
   }
 
-  if (local.status === 'fulfilled') {
+  if (local.status === 'fulfilled' && Array.isArray(local.value) && local.value.length > 0) {
     for (const tag of local.value) {
       if (!tags.has(tag.name.toLowerCase())) tags.set(tag.name.toLowerCase(), tag);
     }
   }
 
   const result = [...tags.values()];
-  await cacheSet(cacheKey, result, 3600);
+  if (result.length > 0) {
+    await cacheSet(cacheKey, result, 3600);
+  }
   return result;
 }
 

@@ -154,8 +154,14 @@ export async function clientSearch(params: Record<string, string | number | unde
   if (q) {
     endpoint = `/manga/search?q=${encodeURIComponent(q)}&page=${page}&page_size=${pageSize}`;
   } else if (genre) {
+    let genreId = genre;
+    if (isNaN(Number(genre))) {
+      const allTags = await clientGetTags();
+      const match = allTags.find(t => t.name.toLowerCase() === genre.toLowerCase());
+      if (match) genreId = match.id;
+    }
     const sortParam = mimiSort ? `&sort=${mimiSort}` : '';
-    endpoint = `/manga/advanced-search?genre=${encodeURIComponent(genre)}&page=${page}&page_size=${pageSize}${sortParam}`;
+    endpoint = `/manga/advanced-search?genre=${encodeURIComponent(genreId)}&page=${page}&page_size=${pageSize}${sortParam}`;
   } else if (author) {
     endpoint = `/manga/search?q=${encodeURIComponent(author)}&page=${page}&page_size=${pageSize}`;
   } else {
@@ -289,10 +295,19 @@ export async function clientGetReader(chapterId: string): Promise<Reader | null>
 
 export async function clientGetTags(): Promise<{ id: string; name: string }[]> {
   const raw = await clientFetch<any[]>('/genres');
-  if (!Array.isArray(raw)) return [];
-  const sorted = [...raw].sort((a, b) => (Number(b.manga_count) || 0) - (Number(a.manga_count) || 0));
-  return sorted.map(g => ({
-    id: String(g.id),
-    name: g.name
-  })).filter(g => g.name);
+  if (Array.isArray(raw) && raw.length > 0) {
+    const sorted = [...raw].sort((a, b) => (Number(b.manga_count) || 0) - (Number(a.manga_count) || 0));
+    return sorted.map(g => ({
+      id: String(g.id),
+      name: g.name
+    })).filter(g => g.name);
+  }
+  try {
+    const res = await fetch('/api/catalog/tags');
+    if (res.ok) {
+      const dbTags = await res.json();
+      if (Array.isArray(dbTags) && dbTags.length > 0) return dbTags;
+    }
+  } catch {}
+  return [];
 }

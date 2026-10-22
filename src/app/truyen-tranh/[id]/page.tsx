@@ -332,10 +332,14 @@ function MangaDetailContent() {
   const findGenre = async (name: string) => {
     try {
       const tags = await api.request<{ id: string; name: string }[]>('/catalog/tags');
-      const t = tags.find(x => x.name === name);
-      if (t) router.push(`/tim-truyen-nang-cao?genre=${t.id}`);
-    } catch (e) {
-      store.notify(message(e));
+      const t = tags.find(x => x.name.toLowerCase() === name.toLowerCase());
+      if (t) {
+        router.push(`/tim-truyen-nang-cao?genre=${t.id}`);
+      } else {
+        router.push(`/tim-truyen-nang-cao?genre=${encodeURIComponent(name)}`);
+      }
+    } catch {
+      router.push(`/tim-truyen-nang-cao?genre=${encodeURIComponent(name)}`);
     }
   };
 

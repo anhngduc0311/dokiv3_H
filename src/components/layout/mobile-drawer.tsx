@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useStore } from '../../contexts/store-context';
 import { Icon } from '../ui/icon';
@@ -21,6 +21,13 @@ export function MobileDrawer({
   tags
 }: MobileDrawerProps) {
   const store = useStore();
+  const [filterText, setFilterText] = useState('');
+
+  const filteredTags = useMemo(() => {
+    if (!filterText.trim()) return tags;
+    const q = filterText.trim().toLowerCase();
+    return tags.filter(t => t.name.toLowerCase().includes(q));
+  }, [tags, filterText]);
 
   if (!isOpen) return null;
 
@@ -106,7 +113,7 @@ export function MobileDrawer({
           <div className="nav-section-label">THỂ LOẠI & ĐỐI TƯỢNG</div>
           <button type="button" className="drawer-genre-toggle" onClick={onToggleGenres}>
             <span className="genre-toggle-left">
-              <Icon name="tag" /> <span>Thể loại truyện</span>
+              <Icon name="tag" /> <span>Thể loại truyện {tags.length > 0 ? `(${tags.length})` : ''}</span>
             </span>
             <Icon
               name="chevronDown"
@@ -114,18 +121,71 @@ export function MobileDrawer({
             />
           </button>
           {genresOpen && (
-            <div className="drawer-genre-pills">
-              {tags.map(t => (
-                <Link
-                  key={t.id}
-                  href={`/tim-truyen-nang-cao?genre=${t.id}`}
-                  onClick={onClose}
-                  className={t.name.toLowerCase() === 'romance' ? 'tag-romance' : ''}
-                >
-                  {t.name}
-                </Link>
-              ))}
-              {tags.length === 0 && <p className="muted">Đang tải thể loại…</p>}
+            <div className="drawer-genre-container" style={{ padding: '6px 12px 14px' }}>
+              <div style={{ position: 'relative', marginBottom: 10 }}>
+                <input
+                  type="search"
+                  value={filterText}
+                  onChange={e => setFilterText(e.target.value)}
+                  placeholder="Lọc thể loại nhanh…"
+                  style={{
+                    width: '100%',
+                    padding: '6px 28px 6px 10px',
+                    fontSize: '12px',
+                    borderRadius: '6px',
+                    border: '1px solid var(--border)',
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    color: 'var(--text-primary)'
+                  }}
+                />
+                {filterText && (
+                  <button
+                    type="button"
+                    onClick={() => setFilterText('')}
+                    style={{
+                      position: 'absolute',
+                      right: 8,
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--text-muted)',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      lineHeight: 1
+                    }}
+                    aria-label="Xóa bộ lọc"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+              <div
+                className="drawer-genre-pills"
+                style={{
+                  maxHeight: '40vh',
+                  overflowY: 'auto',
+                  overscrollBehavior: 'contain',
+                  padding: '2px 0'
+                }}
+              >
+                {filteredTags.map(t => (
+                  <Link
+                    key={t.id}
+                    href={`/tim-truyen-nang-cao?genre=${t.id}`}
+                    onClick={onClose}
+                    className={t.name.toLowerCase() === 'romance' ? 'tag-romance' : ''}
+                  >
+                    {t.name}
+                  </Link>
+                ))}
+                {tags.length === 0 && <p className="muted">Đang tải thể loại…</p>}
+                {tags.length > 0 && filteredTags.length === 0 && (
+                  <p className="muted" style={{ fontSize: '12px', padding: '8px 0' }}>
+                    Không có thể loại nào khớp với "{filterText}".
+                  </p>
+                )}
+              </div>
             </div>
           )}
           <Link href="/tim-truyen-nang-cao?demographic=shounen" onClick={onClose}>
