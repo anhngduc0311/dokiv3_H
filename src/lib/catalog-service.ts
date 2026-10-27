@@ -125,6 +125,8 @@ async function localCatalog(filters: CatalogFilters, genreName = ''): Promise<Ma
           SELECT c."Id" as id, c."MangaId" as "mangaId", c."Title" as title,
                  c."Number" as number, c."Language" as language, c."PublishedAt" as "publishedAt"
           FROM "Chapters" c WHERE c."MangaId" = m."Id" AND c."PublishedAt" <= CURRENT_TIMESTAMP
+            AND (c."ScheduledPublishAt" IS NULL OR c."ScheduledPublishAt" <= CURRENT_TIMESTAMP)
+            AND c."IsLocked" = false
           ORDER BY c."Number" DESC LIMIT 3
         ) ch) as recent_chapters
       FROM "Mangas" m
@@ -237,15 +239,23 @@ export async function getMangaChapters(
   _language: string = 'vi'
 ): Promise<{ items: ChapterCard[]; total: number; page: number; pageSize: number }> {
   await ensureDbInitialized();
+  const empty = { items: [], total: 0, page: 1, pageSize: 1000 };
 
   // Try DB chapters for locally created mangas
   try {
-    const rows = await sql`
+    const [parents, rows] = await Promise.all([sql`
+      SELECT "SourceType", "IsHidden", "IsDraft" FROM "Mangas" WHERE "Id" = ${mangaId} LIMIT 1;
+    `, sql`
       SELECT "Id", "MangaId", "Number", "Title", "Language", "PublishedAt", "ContentType", array_length("Pages", 1) as pages_count
       FROM "Chapters"
       WHERE "MangaId" = ${mangaId}
+        AND "PublishedAt" <= NOW()
+        AND ("ScheduledPublishAt" IS NULL OR "ScheduledPublishAt" <= NOW())
+        AND "IsLocked" = false
       ORDER BY "Number" DESC
-    `;
+    `]);
+    const parent = parents[0];
+    if (parent?.IsHidden || parent?.IsDraft) return empty;
 
     if (rows && rows.length > 0) {
       let sorted = rows;
@@ -271,6 +281,9 @@ export async function getMangaChapters(
         pageSize: 1000
       };
     }
+    // A local story with no published chapters must not resolve to an unrelated
+    // upstream story that happens to have the same ID.
+    if (parent && parent.SourceType !== 'crawl') return empty;
   } catch {}
 
   // Fetch from MimiHentai
@@ -284,7 +297,7 @@ export async function getChapterReader(chapterId: string): Promise<ReaderData | 
   // Try DB chapter
   try {
     const chapRows = await sql`
-      SELECT c.*, m."Title" as manga_title, m."Cover" as manga_cover, m."Author" as manga_author
+      SELECT c.*, m."Title" as manga_title, m."Cover" as manga_cover, m."Author" as manga_author, m."IsHidden" as manga_hidden, m."IsDraft" as manga_draft
       FROM "Chapters" c
       JOIN "Mangas" m ON m."Id" = c."MangaId"
       WHERE c."Id" = ${chapterId}
@@ -293,6 +306,7 @@ export async function getChapterReader(chapterId: string): Promise<ReaderData | 
 
     if (chapRows && chapRows.length > 0) {
       const c = chapRows[0];
+      if (c.manga_hidden || c.manga_draft || c.IsLocked || new Date(c.PublishedAt).getTime() > Date.now() || (c.ScheduledPublishAt && new Date(c.ScheduledPublishAt).getTime() > Date.now())) return null;
       const chapter: ChapterCard = {
         id: c.Id,
         mangaId: c.MangaId,
@@ -324,6 +338,9 @@ export async function getChapterReader(chapterId: string): Promise<ReaderData | 
       const siblings = await sql`
         SELECT "Id", "Number", "Title" FROM "Chapters"
         WHERE "MangaId" = ${c.MangaId}
+          AND "PublishedAt" <= NOW()
+          AND ("ScheduledPublishAt" IS NULL OR "ScheduledPublishAt" <= NOW())
+          AND "IsLocked" = false
         ORDER BY "Number" ASC;
       `;
 
@@ -348,7 +365,9 @@ export async function getChapterReader(chapterId: string): Promise<ReaderData | 
   } catch {}
 
   // Fetch from MimiHentai
-  return getMimiReader(chapterId);
+  const remote = await getMimiReader(chapterId);
+  if (!remote || !(await getMangaDetail(remote.manga.id))) return null;
+  return remote;
 }
 
 // 7. TAGS / GENRES

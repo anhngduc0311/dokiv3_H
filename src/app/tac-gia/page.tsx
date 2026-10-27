@@ -1,3 +1,5 @@
-import AuthorPage from './[name]/page';
+import AuthorClient from './[name]/author-client';
+import { pageMetadata } from '@/lib/seo';
 
-export default AuthorPage;
+export const metadata = pageMetadata({ title: 'Tìm truyện theo tác giả', path: '/tac-gia' });
+export default function AuthorsPage() { return <AuthorClient />; }

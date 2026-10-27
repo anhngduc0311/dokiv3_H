@@ -1,6 +1,14 @@
 import type { NextConfig } from 'next';
+import { COVER_HOSTS } from './src/lib/cover-images';
 
 const nextConfig: NextConfig = {
+  images: {
+    formats: ['image/avif', 'image/webp'],
+    remotePatterns: COVER_HOSTS.flatMap(hostname => [
+      { protocol: 'https' as const, hostname, port: '' },
+      { protocol: 'https' as const, hostname: `**.${hostname}`, port: '' },
+    ]),
+  },
   async redirects() {
     return [
       { source: '/nettrom', destination: '/', permanent: true },

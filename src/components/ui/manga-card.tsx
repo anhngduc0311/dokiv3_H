@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useRef } from 'react';
+import { CoverImage } from './cover-image';
 import Link from 'next/link';
 import { Manga } from '../../types';
 import { api } from '../../lib/api';
@@ -13,7 +14,6 @@ export interface MangaCardProps {
 }
 
 export function MangaCard({ manga, idPrefix = '' }: MangaCardProps) {
-  const [loaded, setLoaded] = useState(false);
   const prefetchedRef = useRef(false);
 
   const recentChapters = (manga.chapters || []).slice(0, 3).map(chapter => ({
@@ -42,13 +42,6 @@ export function MangaCard({ manga, idPrefix = '' }: MangaCardProps) {
     api.prefetchDetail(manga.id);
   };
 
-  const fallback = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
-    const img = e.currentTarget;
-    img.onerror = null;
-    img.src = '/cover-placeholder.svg';
-    setLoaded(true);
-  };
-
   const originText = manga.country === 'ko' ? 'Manhwa' : ['cn', 'zh', 'zh-hk'].includes(manga.country) ? 'Manhua' : 'Manga';
 
   return (
@@ -57,7 +50,7 @@ export function MangaCard({ manga, idPrefix = '' }: MangaCardProps) {
       id={`${idPrefix}manga-card-${manga.id}`}
       data-manga-id={manga.id}
     >
-      <Link
+      <Link prefetch={false}
         href={`/truyen-tranh/${manga.id}`}
         className="cover-link"
         onClick={savePosition}
@@ -65,16 +58,7 @@ export function MangaCard({ manga, idPrefix = '' }: MangaCardProps) {
         onTouchStart={prefetch}
         aria-label={manga.title}
       >
-        <img
-          src={manga.cover || '/cover-placeholder.svg'}
-          alt={manga.title}
-          loading="lazy"
-          decoding="async"
-          referrerPolicy="no-referrer"
-          onLoad={() => setLoaded(true)}
-          onError={fallback}
-          className={loaded ? 'loaded' : ''}
-        />
+        <CoverImage key={manga.cover} src={manga.cover} alt={manga.title} />
         {(manga.contentRating === 'erotica' || manga.contentRating === 'pornographic') && (
           <span className="age-label">18+</span>
         )}
@@ -95,7 +79,7 @@ export function MangaCard({ manga, idPrefix = '' }: MangaCardProps) {
           </span>
         </div>
         <h3>
-          <Link href={`/truyen-tranh/${manga.id}`} onClick={savePosition} title={manga.title}>
+          <Link prefetch={false} href={`/truyen-tranh/${manga.id}`} onClick={savePosition} title={manga.title}>
             {manga.title}
           </Link>
         </h3>
@@ -106,10 +90,10 @@ export function MangaCard({ manga, idPrefix = '' }: MangaCardProps) {
       <div className="mini-chapters">
         {recentChapters.map(c => (
           <div key={c.id} className="mini-chap-item">
-            <Link href={`/chuong/${c.id}`} onClick={savePosition} title={c.title}>
+            <Link prefetch={false} href={`/chuong/${c.id}`} onClick={savePosition} title={c.title}>
               {c.title}
             </Link>
-            <time>{c.relativeTime}</time>
+            <time dateTime={c.publishedAt}>{c.relativeTime}</time>
           </div>
         ))}
         {(!manga.chapters || manga.chapters.length === 0) && (

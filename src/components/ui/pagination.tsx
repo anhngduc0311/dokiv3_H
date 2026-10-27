@@ -2,6 +2,8 @@
 
 import React from 'react';
 import { Icon } from './icon';
+import Link from 'next/link';
+import { usePathname, useSearchParams } from 'next/navigation';
 
 export interface PaginationProps {
   page: number;
@@ -12,6 +14,14 @@ export interface PaginationProps {
 }
 
 export function Pagination({ page = 1, total = 0, size = 28, change, hover }: PaginationProps) {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const crawlable = pathname === '/' || pathname === '/tim-truyen-nang-cao' || pathname.startsWith('/tac-gia/');
+  const pageHref = (n: number) => {
+    const query = new URLSearchParams(searchParams.toString());
+    if (n === 1) query.delete('page'); else query.set('page', String(n));
+    return `${pathname}${query.size ? `?${query}` : ''}`;
+  };
   const totalPages = Math.max(1, Math.ceil(total / size));
 
   const onHover = (n: number) => {
@@ -26,7 +36,7 @@ export function Pagination({ page = 1, total = 0, size = 28, change, hover }: Pa
 
   return (
     <nav className="pagination" aria-label="Phân trang">
-      <button
+      {crawlable && page > 1 ? <Link className="pag-btn" href={pageHref(page - 1)} rel="prev" aria-label="Trang trước" prefetch={false}><Icon name="arrowLeft" /></Link> : <button
         type="button"
         className="pag-btn"
         disabled={page <= 1}
@@ -36,10 +46,10 @@ export function Pagination({ page = 1, total = 0, size = 28, change, hover }: Pa
         aria-label="Trang trước"
       >
         <Icon name="arrowLeft" />
-      </button>
+      </button>}
 
       {numbers.map(p => (
-        <button
+        crawlable ? <Link key={p} className={`pag-btn ${page === p ? 'active' : ''}`} href={pageHref(p)} aria-current={page === p ? 'page' : undefined} prefetch={false} onMouseEnter={() => onHover(p)}>{p}</Link> : <button
           key={p}
           type="button"
           className={`pag-btn ${page === p ? 'active' : ''}`}
@@ -55,7 +65,7 @@ export function Pagination({ page = 1, total = 0, size = 28, change, hover }: Pa
       {totalPages > page + 2 && (
         <>
           <span className="pag-ellipsis">…</span>
-          <button
+          {crawlable ? <Link className="pag-btn" href={pageHref(totalPages)} prefetch={false}>{totalPages}</Link> : <button
             type="button"
             className="pag-btn"
             onClick={() => change(totalPages)}
@@ -63,11 +73,11 @@ export function Pagination({ page = 1, total = 0, size = 28, change, hover }: Pa
             onTouchStart={() => onHover(totalPages)}
           >
             {totalPages}
-          </button>
+          </button>}
         </>
       )}
 
-      <button
+      {crawlable && page < totalPages ? <Link className="pag-btn" href={pageHref(page + 1)} rel="next" aria-label="Trang tiếp" prefetch={false}><Icon name="arrowRight" /></Link> : <button
         type="button"
         className="pag-btn"
         disabled={page >= totalPages}
@@ -77,7 +87,7 @@ export function Pagination({ page = 1, total = 0, size = 28, change, hover }: Pa
         aria-label="Trang tiếp"
       >
         <Icon name="arrowRight" />
-      </button>
+      </button>}
     </nav>
   );
 }

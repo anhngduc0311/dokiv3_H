@@ -68,28 +68,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Splash screen removal on client mount
-  useEffect(() => {
-    const hideSplash = () => {
-      const splash = document.getElementById('app-splash');
-      if (splash && !splash.classList.contains('fade-out')) {
-        splash.classList.add('fade-out');
-        setTimeout(() => {
-          if (splash) {
-            splash.style.display = 'none';
-          }
-        }, 500);
-      }
-    };
-
-    if (document.readyState === 'complete') {
-      setTimeout(hideSplash, 300);
-    } else {
-      window.addEventListener('load', () => setTimeout(hideSplash, 150), { once: true });
-      setTimeout(hideSplash, 900);
-    }
-  }, []);
-
   if (isAdmin) {
     return (
       <>
@@ -143,7 +121,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             tags={tags}
           />
         )}
-        <main>{children}</main>
+        <main id="main-content" tabIndex={-1}>{children}</main>
       </div>
 
       {!isReader && (

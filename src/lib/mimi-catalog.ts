@@ -8,11 +8,12 @@ const DEFAULT_HEADERS = {
   'Referer': 'https://mimihentai.moe/'
 };
 
-async function mimiFetch<T>(endpoint: string, options?: RequestInit): Promise<T | null> {
+async function mimiFetch<T>(endpoint: string, options?: RequestInit, required = false): Promise<T | null> {
   const url = endpoint.startsWith('http') ? endpoint : `${MIMI_BASE}${endpoint.startsWith('/') ? '' : '/'}${endpoint}`;
   try {
     const res = await fetch(url, {
       ...options,
+      signal: options?.signal || AbortSignal.timeout(10000),
       headers: {
         ...DEFAULT_HEADERS,
         ...(options?.headers || {})
@@ -21,12 +22,15 @@ async function mimiFetch<T>(endpoint: string, options?: RequestInit): Promise<T 
     });
     if (!res.ok) {
       if (res.status === 404) return null;
+      if (required) throw new Error(`Catalog upstream returned ${res.status}`);
       console.warn(`[MimiFetch] ${url} returned ${res.status}`);
       return null;
     }
     return (await res.json()) as T;
   } catch (err: any) {
     console.error(`[MimiFetch Error] ${url}:`, err.message || err);
+    // An upstream outage must produce a server error, never a false SEO 404.
+    if (required) throw new Error('Nguồn truyện tạm thời không khả dụng. Vui lòng thử lại.');
     return null;
   }
 }
@@ -224,7 +228,7 @@ export async function getMimiDetail(id: string): Promise<MangaCard | null> {
   if (cached) return cached;
 
   const [rawManga, rawChapters] = await Promise.all([
-    mimiFetch<any>(`/manga/${encodeURIComponent(id)}`),
+    mimiFetch<any>(`/manga/${encodeURIComponent(id)}`, undefined, true),
     mimiFetch<any[]>(`/manga/${encodeURIComponent(id)}/chapters`)
   ]);
 
@@ -299,7 +303,7 @@ export async function getMimiReader(chapterId: string): Promise<ReaderData | nul
     next: any;
     prev: any;
     pages: Array<{ image_url: string }>;
-  }>(`/chapters/${encodeURIComponent(resolvedChapterId)}`);
+  }>(`/chapters/${encodeURIComponent(resolvedChapterId)}`, undefined, true);
 
   // 3. Fallback: If chapter not found, maybe chapterId was actually a manga ID
   if ((!data || !data.info) && !chapterId.includes('_chap_')) {
@@ -308,7 +312,7 @@ export async function getMimiReader(chapterId: string): Promise<ReaderData | nul
       const firstChap = rawChapters[0];
       if (firstChap?.id) {
         resolvedChapterId = String(firstChap.id);
-        data = await mimiFetch<any>(`/chapters/${encodeURIComponent(resolvedChapterId)}`);
+        data = await mimiFetch<any>(`/chapters/${encodeURIComponent(resolvedChapterId)}`, undefined, true);
       }
     }
   }
