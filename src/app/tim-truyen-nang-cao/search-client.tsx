@@ -21,11 +21,11 @@ function SearchContent({ initialCatalog }: { initialCatalog: Page<Manga> }) {
   const [total, setTotal] = useState(initialCatalog.total);
   const [page, setPage] = useState(initialCatalog.page);
   const [pageSize] = useState(24);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(initialCatalog.items.length === 0);
   const [error, setError] = useState('');
   const [expanded, setExpanded] = useState(false);
   const epochRef = useRef(0);
-  const initialRequest = useRef(true);
+  const initialRequest = useRef(initialCatalog.items.length > 0);
 
   const getDefaults = () => ({
     source: searchParams.get('source') || '',

@@ -25,7 +25,7 @@ function HomeContent({ initialCatalog }: { initialCatalog: Page<Manga> }) {
 
   const [items, setItems] = useState<Manga[]>(initialCatalog.items);
   const [total, setTotal] = useState(initialCatalog.total);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(initialCatalog.items.length === 0);
   const [error, setError] = useState('');
 
   // Spotlight State
@@ -256,7 +256,7 @@ function HomeContent({ initialCatalog }: { initialCatalog: Page<Manga> }) {
     setError('');
 
     const cached = api.getCached<Page<Manga>>(path);
-    if (cached && cached.items) {
+    if (cached && cached.items.length > 0) {
       setItems(cached.items);
       if (p === 1) setLatestSpotlights(cached.items);
       setTotal(cached.total);
@@ -269,6 +269,9 @@ function HomeContent({ initialCatalog }: { initialCatalog: Page<Manga> }) {
     setLoading(true);
     try {
       const r = await api.request<Page<Manga>>(path, 'GET', undefined, true);
+      if (!r.items?.length && p === 1) {
+        throw new Error('Chưa tải được danh sách truyện từ nguồn dữ liệu. Vui lòng thử lại.');
+      }
       if (n === epochRef.current) {
         setItems(r.items || []);
         if (p === 1) setLatestSpotlights(r.items || []);
@@ -323,7 +326,9 @@ function HomeContent({ initialCatalog }: { initialCatalog: Page<Manga> }) {
   };
 
   useEffect(() => {
-    if (page !== initialCatalog.page) void loadMain(page);
+    // SSR can return an empty catalog when the hosting server cannot reach the
+    // upstream. ApiClient also tries the browser fallback, so do not skip it.
+    if (page !== initialCatalog.page || initialCatalog.items.length === 0) void loadMain(page);
   }, [page]);
 
   useEffect(() => {
@@ -478,7 +483,7 @@ function HomeContent({ initialCatalog }: { initialCatalog: Page<Manga> }) {
 
           <div className="list-meta-bar">
             <span>Cập nhật mới nhất → cũ nhất</span>
-            <span className="total-badge">{total.toLocaleString('vi')} truyện</span>
+            <span className="total-badge">{loading ? 'Đang tải truyện…' : error && !items.length ? 'Chưa tải được dữ liệu' : `${total.toLocaleString('vi')} truyện`}</span>
           </div>
 
           {error && (

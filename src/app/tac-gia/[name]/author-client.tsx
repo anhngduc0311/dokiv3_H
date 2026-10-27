@@ -27,7 +27,7 @@ function AuthorContent({ initialCatalog }: { initialCatalog?: Page<Manga> }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const epochRef = useRef(0);
-  const initialRequest = useRef(!!initialCatalog);
+  const initialRequest = useRef(!!initialCatalog?.items.length);
 
   useEffect(() => {
     const currentName = params?.name ? decodeURIComponent(String(params.name)) : searchParams.get('name') || '';

@@ -204,3 +204,50 @@ test('draft, hidden, locked and scheduled chapters cannot be served to public re
     assert.equal(await getChapterReader('private'), null);
   }
 });
+
+test('empty SSR homepage starts the browser recovery request even on the same page', async () => {
+  const React = require('react');
+  const { renderToStaticMarkup } = require('react-dom/server');
+  const effects = [];
+  const requests = [];
+  const empty = { items: [], total: 0, page: 1, pageSize: 30 };
+  const load = loader({
+    react: { ...React, useEffect: effect => effects.push(effect) },
+    'next/navigation': { useRouter: () => ({ push() {} }), useSearchParams: () => new URLSearchParams(), usePathname: () => '/' },
+    'next/link': ({ children, prefetch, ...props }) => { void prefetch; return React.createElement('a', props, children); },
+    '../contexts/store-context': { useStore: () => ({ user: null, history: [], settings: {}, isFollowed: () => false }) },
+    '../lib/api': { api: { getCached: () => null, prefetch() {}, request: async request => { requests.push(request); return empty; } } },
+    '../components/layout/sidebar': { Sidebar: () => null },
+  });
+  const Client = load('src/app/home-client.tsx').default;
+  const html = renderToStaticMarkup(React.createElement(Client, { initialCatalog: empty }));
+  assert.ok(html.includes('Đang tải truyện…'));
+  assert.ok(!html.includes('0 truyện'));
+  for (const effect of effects) effect();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.ok(requests.includes('/catalog/home?page=1&pageSize=30'));
+});
+
+test('browser fallback recovers real items when the production API returns an empty 200', async () => {
+  const originalFetch = globalThis.fetch;
+  const originalWindow = globalThis.window;
+  const recovered = { items: [manga], total: 32182, page: 1, pageSize: 30 };
+  let fallbackCalls = 0;
+  try {
+    globalThis.window = {};
+    globalThis.fetch = async () => Response.json({ items: [], total: 0, page: 1, pageSize: 30 });
+    const load = loader({
+      './utils': { getStoredToken: () => null },
+      './mimi-client': { clientGetHome: async () => { fallbackCalls++; return recovered; } },
+    });
+    const { ApiClient } = load('src/lib/api.ts');
+    const client = new ApiClient();
+    const result = await client.request('/catalog/home?page=1&pageSize=30', 'GET', undefined, true);
+    assert.equal(result.items.length, 1);
+    assert.equal(result.total, 32182);
+    assert.equal(fallbackCalls, 1);
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalWindow === undefined) delete globalThis.window; else globalThis.window = originalWindow;
+  }
+});
