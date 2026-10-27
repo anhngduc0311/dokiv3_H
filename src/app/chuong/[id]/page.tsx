@@ -4,17 +4,23 @@ import ReaderClient from './reader-client';
 import { loadReader, clientReader } from '@/lib/seo-data';
 import { breadcrumbs, chapterPath, isAdult, mangaPath, pageMetadata, readerSchema } from '@/lib/seo';
 import { JsonLd } from '@/components/seo/json-ld';
+import { serverDataResult } from '@/lib/server-data-result';
 
 export const dynamic = 'force-dynamic';
 type Props = { params: Promise<{ id: string }> };
 export async function generateMetadata({ params }: Props) {
-  const data = await loadReader((await params).id);
+  const { id } = await params;
+  const result = await serverDataResult(() => loadReader(id));
+  if (result.failed) return pageMetadata({ title: 'Đang tải chương truyện', path: chapterPath(id), noindex: true });
+  const data = result.data;
   if (!data) notFound();
   return pageMetadata({ title: `${data.manga.title} - ${data.chapter.title}`, text: `Đọc ${data.chapter.title} của ${data.manga.title} bằng tiếng Việt. Xem danh sách chương và tiếp tục đọc tại DokiHentai.`, path: chapterPath(data.chapter.id), image: data.manga.cover, adult: isAdult(data.manga) });
 }
 export default async function ReaderPage({ params }: Props) {
   const { id } = await params;
-  const data = await loadReader(id);
+  const result = await serverDataResult(() => loadReader(id));
+  if (result.failed) return <ReaderClient key={id} initialData={null} />;
+  const data = result.data;
   if (!data) notFound();
   // Synthetic catalog IDs and old manga IDs resolve to one canonical chapter URL.
   if (data.chapter.id !== id) permanentRedirect(chapterPath(data.chapter.id));

@@ -34,7 +34,7 @@ const SPEED_PPS: Record<number, number> = {
   4: 220
 };
 
-function ReaderContent({ initialData }: { initialData: ReaderData }) {
+function ReaderContent({ initialData }: { initialData: ReaderData | null }) {
   const params = useParams();
   const router = useRouter();
   const store = useStore();
@@ -42,7 +42,7 @@ function ReaderContent({ initialData }: { initialData: ReaderData }) {
   const id = String(params?.id || '');
 
   const [data, setData] = useState<ReaderData | null>(initialData);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(!initialData);
   const [error, setError] = useState('');
   const [failed, setFailed] = useState<Set<number>>(new Set());
   const [, setLoaded] = useState<Set<number>>(new Set());
@@ -383,6 +383,7 @@ function ReaderContent({ initialData }: { initialData: ReaderData }) {
 
     try {
       const r = await api.request<ReaderData>('/chapters/' + id, 'GET', undefined, true);
+      if (!r) throw new Error('Không tải được chương truyện. Vui lòng thử lại.');
       if (n !== epochRef.current) return;
       setData(r);
       void store.record(r).catch(() => {});
@@ -402,7 +403,7 @@ function ReaderContent({ initialData }: { initialData: ReaderData }) {
     setSinglePageIndex(0);
     stopAutoScroll();
     scrollToTopInstant();
-    if (initialData.chapter.id === id) {
+    if (initialData?.chapter.id === id) {
       setData(initialData);
       setLoading(false);
       void store.record(initialData).catch(() => {});
@@ -1259,7 +1260,7 @@ function ReaderContent({ initialData }: { initialData: ReaderData }) {
   );
 }
 
-export default function ReaderPage({ initialData }: { initialData: ReaderData }) {
+export default function ReaderPage({ initialData }: { initialData: ReaderData | null }) {
   return (
     <Suspense fallback={<div className="loading-panel"><div className="search-spinner"></div></div>}>
       <ReaderContent initialData={initialData} />

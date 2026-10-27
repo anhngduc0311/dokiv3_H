@@ -251,3 +251,68 @@ test('browser fallback recovers real items when the production API returns an em
     if (originalWindow === undefined) delete globalThis.window; else globalThis.window = originalWindow;
   }
 });
+
+test('upstream failures in detail and reader metadata/pages preserve browser recovery', async () => {
+  for (const kind of ['manga', 'reader']) {
+    const load = loader({
+      'next/navigation': { notFound: () => { throw new Error('unexpected 404'); } },
+      './manga-client': () => null,
+      './reader-client': () => null,
+      '@/lib/seo-data': {
+        loadManga: async () => { throw new Error('upstream unavailable'); },
+        loadReader: async () => { throw new Error('upstream unavailable'); },
+      },
+    });
+    const route = kind === 'manga' ? 'src/app/truyen-tranh/[id]/page.tsx' : 'src/app/chuong/[id]/page.tsx';
+    const page = load(route);
+    const props = { params: Promise.resolve({ id: '70756' }) };
+    const meta = await page.generateMetadata(props);
+    assert.equal(meta.robots.index, false);
+    const recovery = await page.default(props);
+    assert.equal(recovery.props[kind === 'manga' ? 'initialManga' : 'initialData'], null);
+  }
+});
+
+test('detail and reader clients can render a loading shell without server data', () => {
+  const React = require('react');
+  const { renderToStaticMarkup } = require('react-dom/server');
+  const load = loader({
+    'next/navigation': { useParams: () => ({ id: '70756' }), useRouter: () => ({ push() {} }), usePathname: () => '/truyen-tranh/70756', useSearchParams: () => new URLSearchParams() },
+    'next/link': ({ children, prefetch, ...props }) => { void prefetch; return React.createElement('a', props, children); },
+    '../../../contexts/store-context': { useStore: () => ({ settings: { language: 'vi', width: 900 }, history: [], user: null }) },
+    '../../../lib/api': { api: { getCached: () => null } },
+    '../../../components/layout/sidebar': { Sidebar: () => null },
+  });
+  const Detail = load('src/app/truyen-tranh/[id]/manga-client.tsx').default;
+  const Reader = load('src/app/chuong/[id]/reader-client.tsx').default;
+  assert.match(renderToStaticMarkup(React.createElement(Detail, { initialManga: null })), /loading-panel|skeleton/);
+  assert.match(renderToStaticMarkup(React.createElement(Reader, { initialData: null })), /loading-panel|skeleton|spinner/);
+});
+
+test('a failed chapter list does not discard an available manga detail', async () => {
+  const load = loader({
+    'next/navigation': { notFound: () => { throw new Error('unexpected 404'); } },
+    './manga-client': () => null,
+    '@/lib/seo-data': { loadManga: async () => manga, loadChapters: async () => { throw new Error('chapters unavailable'); }, clientManga: value => value },
+  });
+  const result = await load('src/app/truyen-tranh/[id]/page.tsx').default({ params: Promise.resolve({ id: manga.id }) });
+  assert.equal(result.props.children[1].props.initialManga.id, manga.id);
+});
+
+test('detail API returns retryable 503 and the browser recovers from that response', async () => {
+  const route = loader({ '@/lib/catalog-service': { getMangaDetail: async () => { throw new Error('upstream unavailable'); } } })('src/app/api/catalog/[id]/route.ts');
+  const response = await route.GET(new Request('https://dokihentai.com/api/catalog/70756'), { params: Promise.resolve({ id: '70756' }) });
+  assert.equal(response.status, 503);
+  assert.equal(response.headers.get('cache-control'), 'no-store');
+  const originalFetch = globalThis.fetch;
+  const originalWindow = globalThis.window;
+  try {
+    globalThis.window = {};
+    globalThis.fetch = async () => response.clone();
+    const { ApiClient } = loader({ './utils': { getStoredToken: () => null }, './mimi-client': { clientGetDetail: async () => manga } })('src/lib/api.ts');
+    assert.equal((await new ApiClient().request('/catalog/70756', 'GET', undefined, true)).id, manga.id);
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalWindow === undefined) delete globalThis.window; else globalThis.window = originalWindow;
+  }
+});

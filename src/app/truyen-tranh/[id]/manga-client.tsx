@@ -43,7 +43,7 @@ const COUNTRIES: Record<string, string> = {
 
 const SCORES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
-function MangaDetailContent({ initialManga }: { initialManga: Manga }) {
+function MangaDetailContent({ initialManga }: { initialManga: Manga | null }) {
   const params = useParams();
   const router = useRouter();
   const store = useStore();
@@ -51,15 +51,15 @@ function MangaDetailContent({ initialManga }: { initialManga: Manga }) {
   const id = String(params?.id || '');
 
   const [manga, setManga] = useState<Manga | null>(initialManga);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(!initialManga);
   const [error, setError] = useState('');
 
-  const [chapters, setChapters] = useState<Chapter[]>(initialManga.chapters);
+  const [chapters, setChapters] = useState<Chapter[]>((initialManga?.chapters || []));
   const [chapterPage, setChapterPage] = useState(1);
-  const [chapterTotal, setChapterTotal] = useState(initialManga.totalChapters || initialManga.chapters.length);
+  const [chapterTotal, setChapterTotal] = useState(initialManga?.totalChapters || (initialManga?.chapters || []).length);
   const [chapterLoading, setChapterLoading] = useState(false);
   const [chapterError, setChapterError] = useState('');
-  const [firstChapter, setFirstChapter] = useState<Chapter | null>([...initialManga.chapters].sort((a, b) => a.number - b.number)[0] || null);
+  const [firstChapter, setFirstChapter] = useState<Chapter | null>([...(initialManga?.chapters || [])].sort((a, b) => a.number - b.number)[0] || null);
 
   const [language, setLanguage] = useState(store.settings.language || 'vi');
   const [ascending, setAscending] = useState(false);
@@ -127,8 +127,11 @@ function MangaDetailContent({ initialManga }: { initialManga: Manga }) {
   }, [comments]);
 
   const loadManga = async (n: number) => {
+    setLoading(true);
+    setError('');
     try {
       const m = await api.request<Manga>('/catalog/' + id, 'GET', undefined, true);
+      if (!m) throw new Error('Không tải được truyện. Vui lòng thử lại.');
       if (n === epochRef.current && m) {
         setManga(m);
         if (m.chapters && m.chapters.length > 0) {
@@ -240,11 +243,11 @@ function MangaDetailContent({ initialManga }: { initialManga: Manga }) {
     if (!id) return;
     setChapterPage(1);
     setCommentPage(1);
-    setFirstChapter([...initialManga.chapters].sort((a, b) => a.number - b.number)[0] || null);
+    setFirstChapter([...(initialManga?.chapters || [])].sort((a, b) => a.number - b.number)[0] || null);
     preloadedRef.current = false;
 
     // Check cache for instant rendering
-    const cachedManga = api.getCached<Manga>('/catalog/' + id) || (initialManga.id === id ? initialManga : null);
+    const cachedManga = api.getCached<Manga>('/catalog/' + id) || (initialManga?.id === id ? initialManga : null);
     if (cachedManga) {
       setManga(cachedManga);
       setLoading(false);
@@ -257,7 +260,7 @@ function MangaDetailContent({ initialManga }: { initialManga: Manga }) {
     setError('');
 
     void Promise.allSettled([
-      ...(initialManga.id === id ? [] : [loadManga(n)]),
+      ...(initialManga?.id === id ? [] : [loadManga(n)]),
       loadChapters(1, language, ascending),
       loadCommunity(),
       loadComments(1)
@@ -497,6 +500,13 @@ function MangaDetailContent({ initialManga }: { initialManga: Manga }) {
         <span className="breadcrumb-sep">›</span>
         <span className="current-crumb">{manga?.title || 'Chi tiết truyện'}</span>
       </nav>
+
+      {loading && !manga && (
+        <div className="loading-panel" role="status">
+          <div className="search-spinner" />
+          <p>Đang tải thông tin truyện…</p>
+        </div>
+      )}
 
       {error && (
         <div className="error-state glass-panel">
@@ -1004,7 +1014,7 @@ function MangaDetailContent({ initialManga }: { initialManga: Manga }) {
   );
 }
 
-export default function MangaDetailPage({ initialManga }: { initialManga: Manga }) {
+export default function MangaDetailPage({ initialManga }: { initialManga: Manga | null }) {
   return (
     <Suspense fallback={<div className="loading-panel"><div className="search-spinner"></div></div>}>
       <MangaDetailContent initialManga={initialManga} />
