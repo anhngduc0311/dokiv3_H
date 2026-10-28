@@ -8,10 +8,17 @@ import { StoreProvider } from '../contexts/store-context';
 import { AppShell } from '../components/layout/app-shell';
 
 export const metadata: Metadata = {
-  ...pageMetadata({ title: 'Đọc truyện tranh tiếng Việt', path: '/' }),
+  ...pageMetadata({
+    title: 'DokiHentai - Web Đọc Truyện Hentai, Manga 18+, Doujinshi Vietsub Online',
+    text: 'DokiHentai - Website đọc truyện hentai, manga 18+, manhwa 18+, doujinshi vietsub tiếng Việt mới nhất, không quảng cáo, cập nhật mỗi ngày chất lượng full HD.',
+    path: '/',
+    adult: true,
+  }),
   metadataBase: new URL('https://www.dokihentai.com'),
   icons: { icon: '/favicon.svg' },
   authors: [{ name: 'DokiHentai' }],
+  category: 'manga',
+  classification: 'Adult Entertainment',
 };
 
 export const viewport: Viewport = {
@@ -28,11 +35,12 @@ const jsonLd = {
       '@id': 'https://www.dokihentai.com/#website',
       url: 'https://www.dokihentai.com/',
       name: 'DokiHentai',
-      alternateName: ['Doki Hentai', 'dokihentai', 'dokihentai.com', 'DokiHentai'],
-      description: 'Website đọc truyện tranh online miễn phí cập nhật mới nhất mỗi ngày',
+      alternateName: ['Doki Hentai', 'dokihentai', 'dokihentai.com', 'DokiHentai - Web Đọc Truyện Hentai Online'],
+      description: 'Website đọc truyện hentai, manga 18+, manhwa 18+, doujinshi vietsub tiếng Việt mới nhất cập nhật mỗi ngày',
       publisher: {
         '@id': 'https://www.dokihentai.com/#organization'
       },
+      isFamilyFriendly: false,
       potentialAction: [
         {
           '@type': 'SearchAction',
@@ -68,6 +76,9 @@ export default function RootLayout({
   return (
     <html lang="vi" className={font.variable}>
       <head>
+        <meta name="rating" content="RTA-5042-1996-1400-1577-RTA" />
+        <meta name="rating" content="adult" />
+        <meta name="RATING" content="RTA-5042-1996-1400-1577-RTA" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }}

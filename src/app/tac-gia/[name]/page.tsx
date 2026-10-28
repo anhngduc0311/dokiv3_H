@@ -10,7 +10,21 @@ export async function generateMetadata({ params, searchParams }: Props) {
   const { name } = await params;
   const query = await searchParams;
   const page = pageNumber(query.page);
-  return pageMetadata({ title: `Truyện của tác giả ${name}${page > 1 ? ` - Trang ${page}` : ''}`, text: `Danh sách truyện tranh của tác giả ${name}. Khám phá tác phẩm và các chương tại DokiHentai.`, path: `/tac-gia/${encodeURIComponent(name)}${page > 1 ? `?page=${page}` : ''}`, noindex: !!query.sort && query.sort !== 'latest' });
+  return pageMetadata({
+    title: `Truyện hentai tác giả ${name}${page > 1 ? ` - Trang ${page}` : ''}`,
+    text: `Danh sách truyện hentai, manga 18+, doujinshi của tác giả ${name} vietsub tiếng Việt mới nhất. Khám phá tác phẩm và các chương tại DokiHentai.`,
+    path: `/tac-gia/${encodeURIComponent(name)}${page > 1 ? `?page=${page}` : ''}`,
+    noindex: !!query.sort && query.sort !== 'latest',
+    adult: true,
+    keywords: [
+      `tác giả ${name}`,
+      `truyện của ${name}`,
+      `${name} hentai`,
+      'truyện hentai',
+      'manga 18+',
+      'dokihentai'
+    ]
+  });
 }
 export default async function AuthorPage({ params, searchParams }: Props) {
   const { name } = await params;

@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { BrandLogo } from '../ui/brand-logo';
 
 export function Footer() {
   return (
@@ -9,26 +10,16 @@ export function Footer() {
       <div className="footer-inner">
         <div>
           <Link href="/" className="brand" aria-label="DokiHentai - Trang chủ">
-            <img
-              className="brand-symbol"
-              src="/brand-mark.png"
-              width="44"
-              height="44"
-              alt=""
-              aria-hidden="true"
-            />
-            <span className="brand-wordmark">
-              doki<span>hentai</span>
-              <span className="brand-period">.</span>
-            </span>
+            <BrandLogo />
           </Link>
           <p>
-            <strong>DokiHentai (Doki Hentai - dokihentai.com)</strong> — Trang đọc truyện tranh
-            online miễn phí cập nhật mới nhất mỗi ngày. Đọc Manga, Manhwa, Manhua tiếng Việt bản
-            dịch chất lượng cao, hình ảnh sắc nét và tối ưu mượt mà trên điện thoại và máy tính.
+            <strong>DokiHentai (Doki Hentai - dokihentai.com)</strong> — Trang web đọc truyện hentai,
+            manga 18+, manhwa 18+, doujinshi vietsub tiếng Việt online mới nhất và hoàn toàn miễn phí.
+            Kho truyện phong phú, đầy đủ thể loại, hình ảnh sắc nét chuẩn HD và cập nhật liên tục mỗi ngày.
+            Nội dung gắn nhãn RTA (Restricted To Adults - 18+).
           </p>
           <small className="footer-copy">
-            © 2026 DokiHentai · Website đọc truyện tranh online
+            © 2026 DokiHentai · Web đọc truyện hentai & manga 18+ vietsub online
           </small>
         </div>
         <div>
@@ -36,8 +27,9 @@ export function Footer() {
           <div className="footer-navigation">
             <Link href="/">Trang chủ</Link>
             <Link href="/tim-truyen-nang-cao">Khám phá toàn bộ</Link>
-            <Link href="/tim-truyen-nang-cao?sort=latest">Truyện mới cập nhật</Link>
-            <Link href="/tim-truyen-nang-cao?sort=rating">Truyện được yêu thích</Link>
+            <Link href="/tim-truyen-nang-cao?sort=latest">Truyện hentai mới nhất</Link>
+            <Link href="/tim-truyen-nang-cao?sort=rating">Truyện 18+ yêu thích</Link>
+            <Link href="/tac-gia">Tác giả truyện hentai</Link>
           </div>
         </div>
         <div>
@@ -45,8 +37,8 @@ export function Footer() {
           <div className="footer-navigation">
             <Link href="/theo-doi">Truyện theo dõi</Link>
             <Link href="/lich-su">Lịch sử đọc truyện</Link>
-            <Link href="/tim-truyen-nang-cao?country=ja">Manga Nhật Bản</Link>
-            <Link href="/tim-truyen-nang-cao?country=ko">Manhwa Hàn Quốc</Link>
+            <Link href="/tim-truyen-nang-cao?country=ja">Manga Hentai Nhật Bản</Link>
+            <Link href="/tim-truyen-nang-cao?country=ko">Manhwa 18+ Hàn Quốc</Link>
           </div>
         </div>
         <div>
@@ -55,11 +47,6 @@ export function Footer() {
             Nền tảng đọc truyện tranh trực tuyến phi lợi nhuận. Mọi thông tin và hình ảnh được tổng
             hợp từ các nguồn mở trên internet.
           </p>
-          <div className="footer-links">
-            <a href="https://mimihentai.moe" target="_blank" rel="noopener noreferrer">
-              MimiHentai ↗
-            </a>
-          </div>
         </div>
       </div>
     </footer>

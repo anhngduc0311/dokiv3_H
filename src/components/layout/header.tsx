@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { BrandLogo } from '../ui/brand-logo';
 import { useRouter, usePathname } from 'next/navigation';
 import { Manga, NotificationItem } from '../../types';
 import { api } from '../../lib/api';
@@ -194,18 +195,7 @@ export function Header({
 
         {/* Brand Logo */}
         <Link href="/" className="brand" aria-label="DokiHentai - Trang chủ">
-          <img
-            className="brand-symbol"
-            src="/brand-mark.png"
-            width="44"
-            height="44"
-            alt=""
-            aria-hidden="true"
-          />
-          <span className="brand-wordmark">
-            doki<span>hentai</span>
-            <span className="brand-period">.</span>
-          </span>
+          <BrandLogo />
         </Link>
 
         {/* Desktop Navigation */}

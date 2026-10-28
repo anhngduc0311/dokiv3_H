@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { BrandLogo } from '../ui/brand-logo';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useStore } from '../../contexts/store-context';
 import { setStoredToken, message } from '../../lib/utils';
@@ -177,18 +178,7 @@ export function AuthView({ isRegister = false }: AuthViewProps) {
     <div className="auth-wrap">
       <section className="auth-panel glass-panel">
         <Link href="/" className="brand auth-brand" aria-label="DokiHentai - Trang chủ">
-          <img
-            className="brand-symbol"
-            src="/brand-mark.png"
-            width="44"
-            height="44"
-            alt=""
-            aria-hidden="true"
-          />
-          <span className="brand-wordmark">
-            doki<span>hentai</span>
-            <span className="brand-period">.</span>
-          </span>
+          <BrandLogo />
         </Link>
         <h1>{isRegister ? 'Tạo tài khoản' : 'Chào mừng trở lại'}</h1>
         <p className="muted">

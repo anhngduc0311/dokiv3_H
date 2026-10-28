@@ -208,8 +208,8 @@ function MangaDetailContent({ initialManga }: { initialManga: Manga | null }) {
       );
       setComments(r.items || []);
       setCommentsTotal(r.total || 0);
-    } catch (e) {
-      store.notify(message(e));
+    } catch {
+      // Không hiện toast lỗi khi tải bình luận ngầm
     }
   };
 
@@ -715,7 +715,7 @@ function MangaDetailContent({ initialManga }: { initialManga: Manga | null }) {
                           <span className="chapter-title-text">{c.title}</span>
                         </div>
                         <div className="chapter-meta-right">
-                          <time>{ago(c.publishedAt)}</time>
+                          <time dateTime={c.publishedAt} suppressHydrationWarning>{ago(c.publishedAt)}</time>
                           <Icon name="chevron" />
                         </div>
                       </Link>

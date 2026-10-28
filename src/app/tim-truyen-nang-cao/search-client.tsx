@@ -284,13 +284,6 @@ function SearchContent({ initialCatalog }: { initialCatalog: Page<Manga> }) {
         {expanded && (
           <div className="filter-grid">
             <label>
-              <span>Nguồn truyện</span>
-              <select name="source" value={form.source} onChange={e => setForm({ ...form, source: e.target.value })}>
-                <option value="">Tất cả nguồn</option>
-                <option value="mimihentai">MimiHentai</option>
-              </select>
-            </label>
-            <label>
               <span>Thể loại truyện</span>
               <select
                 name="genre"

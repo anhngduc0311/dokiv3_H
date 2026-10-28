@@ -9,7 +9,22 @@ type Props = { searchParams: Promise<SearchParams> };
 export async function generateMetadata({ searchParams }: Props) {
   const query = await searchParams;
   const q = single(query.q);
-  return pageMetadata({ title: q ? `Tìm truyện: ${q}` : 'Tìm truyện nâng cao', path: '/tim-truyen-nang-cao', noindex: Object.keys(query).length > 0 });
+  return pageMetadata({
+    title: q ? `Tìm truyện hentai: ${q}` : 'Tìm kiếm truyện hentai, manga 18+ nâng cao',
+    text: q
+      ? `Kết quả tìm kiếm truyện hentai cho từ khóa "${q}" tại DokiHentai.`
+      : 'Tìm kiếm truyện hentai, manga 18+, manhwa 18+, doujinshi vietsub theo thể loại, tác giả, trạng thái tại DokiHentai.',
+    path: '/tim-truyen-nang-cao',
+    noindex: Object.keys(query).length > 0,
+    adult: true,
+    keywords: [
+      q ? `${q} hentai` : '',
+      'tìm truyện hentai',
+      'manga 18+',
+      'doujinshi vietsub',
+      'dokihentai'
+    ].filter(Boolean)
+  });
 }
 export default async function SearchPage({ searchParams }: Props) {
   const query = await searchParams;

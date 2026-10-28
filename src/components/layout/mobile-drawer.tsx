@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
+import { BrandLogo } from '../ui/brand-logo';
 import { useStore } from '../../contexts/store-context';
 import { Icon } from '../ui/icon';
 
@@ -41,18 +42,7 @@ export function MobileDrawer({
         {/* Drawer Header */}
         <div className="drawer-header">
           <Link href="/" className="brand" aria-label="DokiHentai - Trang chủ" onClick={onClose}>
-            <img
-              className="brand-symbol"
-              src="/brand-mark.png"
-              width="44"
-              height="44"
-              alt=""
-              aria-hidden="true"
-            />
-            <span className="brand-wordmark">
-              doki<span>hentai</span>
-              <span className="brand-period">.</span>
-            </span>
+            <BrandLogo />
           </Link>
           <button
             type="button"

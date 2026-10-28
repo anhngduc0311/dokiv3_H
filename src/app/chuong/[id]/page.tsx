@@ -14,7 +14,22 @@ export async function generateMetadata({ params }: Props) {
   if (result.failed) return pageMetadata({ title: 'Đang tải chương truyện', path: chapterPath(id), noindex: true });
   const data = result.data;
   if (!data) notFound();
-  return pageMetadata({ title: `${data.manga.title} - ${data.chapter.title}`, text: `Đọc ${data.chapter.title} của ${data.manga.title} bằng tiếng Việt. Xem danh sách chương và tiếp tục đọc tại DokiHentai.`, path: chapterPath(data.chapter.id), image: data.manga.cover, adult: isAdult(data.manga) });
+  return pageMetadata({
+    title: `${data.manga.title} - ${data.chapter.title} [Hentai Vietsub]`,
+    text: `Đọc truyện hentai ${data.manga.title} ${data.chapter.title} vietsub tiếng Việt mới nhất online tại DokiHentai. Xem các chương tiếp theo và trọn bộ miễn phí.`,
+    path: chapterPath(data.chapter.id),
+    image: data.manga.cover,
+    adult: isAdult(data.manga),
+    keywords: [
+      data.manga.title,
+      `${data.manga.title} ${data.chapter.title}`,
+      `${data.manga.title} hentai`,
+      `${data.manga.title} vietsub`,
+      'đọc truyện hentai',
+      'hentai vietsub',
+      'manga 18+'
+    ]
+  });
 }
 export default async function ReaderPage({ params }: Props) {
   const { id } = await params;
@@ -29,7 +44,7 @@ export default async function ReaderPage({ params }: Props) {
   const next = current >= 0 ? data.navigation[current + 1] : undefined;
   return <>
     <JsonLd data={[readerSchema(data), breadcrumbs([{ name: 'Trang chủ', path: '/' }, { name: data.manga.title, path: mangaPath(data.manga.id) }, { name: data.chapter.title, path: chapterPath(id) }])]} />
-    <h1 className="sr-only">{data.manga.title} - {data.chapter.title}</h1>
+    <h1 className="sr-only">{data.manga.title} - {data.chapter.title} [Hentai Vietsub]</h1>
     <ReaderClient key={id} initialData={clientReader(data)} />
     <nav className="reader-seo-navigation" aria-label="Điều hướng chương">
       <Link href="/">Trang chủ</Link>

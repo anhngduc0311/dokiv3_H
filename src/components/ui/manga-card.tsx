@@ -84,7 +84,10 @@ export function MangaCard({ manga, idPrefix = '' }: MangaCardProps) {
           </Link>
         </h3>
         <p className="card-origin">
-          {originText} · {manga.source === 'mimihentai' ? 'MimiHentai' : manga.source === 'truyengg' ? 'TruyenGG' : manga.year || 'DokiHentai'}
+          {originText}
+          {manga.source !== 'mimihentai' && (
+            <> · {manga.source === 'truyengg' ? 'TruyenGG' : manga.year || 'DokiHentai'}</>
+          )}
         </p>
       </div>
       <div className="mini-chapters">
@@ -93,7 +96,7 @@ export function MangaCard({ manga, idPrefix = '' }: MangaCardProps) {
             <Link prefetch={false} href={`/chuong/${c.id}`} onClick={savePosition} title={c.title}>
               {c.title}
             </Link>
-            <time dateTime={c.publishedAt}>{c.relativeTime}</time>
+            <time dateTime={c.publishedAt} suppressHydrationWarning>{c.relativeTime}</time>
           </div>
         ))}
         {(!manga.chapters || manga.chapters.length === 0) && (
