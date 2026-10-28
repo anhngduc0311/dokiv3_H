@@ -36,12 +36,15 @@ function loader(overrides = {}) {
 const seo = loader()('src/lib/seo.ts');
 const manga = { id: 'id/&', title: 'Tên truyện', author: 'Tác giả', description: '<p>Mô tả &amp; nội dung</p>', cover: '/cover.png', genres: ['Fantasy'], updatedAt: '2026-10-01', chapters: [], source: 'mimihentai', rating: 9 };
 
-test('home starts upstream loading while database initialization is pending', async () => {
+test('home reads sources concurrently without running database initialization', async () => {
   let releaseDb;
   const dbReady = new Promise(resolve => { releaseDb = resolve; });
   let remoteStarted = false;
   const load = loader({
-    './db': { ensureDbInitialized: () => dbReady, sql: async () => [] },
+    './db': {
+      ensureDbInitialized: () => { throw new Error('public reads must not initialize the database'); },
+      sql: async () => { await dbReady; return []; },
+    },
     './redis': { cacheGet: async () => null, cacheSet: async () => {} },
     './mimi-catalog': { getMimiCatalog: async () => {
       remoteStarted = true;
@@ -133,7 +136,30 @@ test('sitemap index includes every shard beyond the old 1000-item cap', async ()
   const xml = await response.text();
   assert.equal((xml.match(/<sitemap>/g) || []).length, 6);
   assert.match(xml, /sitemaps\/2.xml/);
-  assert.match(xml, /sitemaps\/catalog-1.xml/);
+  assert.match(xml, /sitemaps\/4.xml/);
+  assert.doesNotMatch(xml, /catalog-/);
+  assert.match(xml, /\n  <sitemap>\n    <loc>https:\/\/www\.dokihentai\.com\/sitemap-static\.xml<\/loc>\n  <\/sitemap>/);
+  assert.equal(response.headers.get('content-type'), 'application/xml; charset=utf-8');
+});
+
+test('numbered sitemaps continue from local URLs into the remote catalog', async () => {
+  const requestedShards = [];
+  const load = loader({
+    './db': { sql: async strings => strings.join('').includes('AS total') ? [{ total: 5001 }] : [] },
+    '@/lib/sitemap-catalog': {
+      CATALOG_SITEMAP_SIZE: 480,
+      catalogSitemapRows: async shard => {
+        requestedShards.push(shard);
+        return [{ path: '/truyen-tranh/70756' }];
+      },
+    },
+  });
+  const { GET } = load('src/app/sitemaps/[file]/route.ts');
+  const response = await GET(new Request('https://www.dokihentai.com/sitemaps/2.xml'),
+    { params: Promise.resolve({ file: '2.xml' }) });
+  assert.equal(response.status, 200);
+  assert.deepEqual(requestedShards, [0]);
+  assert.match(await response.text(), /\/truyen-tranh\/70756<\/loc>/);
 });
 test('DB failures return retryable 503 and never cache a partial sitemap', async () => {
   const load = loader({
@@ -375,6 +401,56 @@ test('browser fallback recovers real items when the production API returns an em
     assert.equal(result.items.length, 1);
     assert.equal(result.total, 32182);
     assert.equal(fallbackCalls, 1);
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalWindow === undefined) delete globalThis.window; else globalThis.window = originalWindow;
+  }
+});
+
+test('empty SSR home recovers directly without repeating the server request', async () => {
+  const originalFetch = globalThis.fetch;
+  const originalWindow = globalThis.window;
+  const recovered = { items: [manga], total: 32182, page: 1, pageSize: 30 };
+  let browserCalls = 0;
+  let serverCalls = 0;
+  try {
+    globalThis.window = {};
+    globalThis.fetch = async () => { serverCalls++; throw new Error('server route must not run'); };
+    const load = loader({
+      './utils': { getStoredToken: () => null },
+      './mimi-client': { clientGetHome: async () => { browserCalls++; return recovered; } },
+    });
+    const { ApiClient } = load('src/lib/api.ts');
+    const client = new ApiClient();
+    const path = '/catalog/home?page=1&pageSize=30';
+    assert.deepEqual(await client.request(path, 'GET', undefined, true, true), recovered);
+    assert.deepEqual(await client.request(path, 'GET', undefined, true, true), recovered);
+    assert.equal(browserCalls, 1);
+    assert.equal(serverCalls, 0);
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalWindow === undefined) delete globalThis.window; else globalThis.window = originalWindow;
+  }
+});
+
+test('failed direct home recovery still tries the server and never caches the empty fallback', async () => {
+  const originalFetch = globalThis.fetch;
+  const originalWindow = globalThis.window;
+  const recovered = { items: [manga], total: 1, page: 1, pageSize: 30 };
+  let serverCalls = 0;
+  try {
+    globalThis.window = {};
+    globalThis.fetch = async () => { serverCalls++; return Response.json(recovered); };
+    const load = loader({
+      './utils': { getStoredToken: () => null },
+      './mimi-client': { clientGetHome: async () => ({ items: [], total: 0, page: 1, pageSize: 30 }) },
+    });
+    const { ApiClient } = load('src/lib/api.ts');
+    const client = new ApiClient();
+    const path = '/catalog/home?page=1&pageSize=30';
+    assert.deepEqual(await client.request(path, 'GET', undefined, true, true), recovered);
+    assert.deepEqual(client.getCached(path), recovered);
+    assert.equal(serverCalls, 1);
   } finally {
     globalThis.fetch = originalFetch;
     if (originalWindow === undefined) delete globalThis.window; else globalThis.window = originalWindow;

@@ -96,6 +96,7 @@ async function clientFetch<T>(endpoint: string): Promise<T | null> {
   try {
     const res = await fetch(url, {
       method: 'GET',
+      signal: AbortSignal.timeout(5000),
       headers: {
         'Accept': 'application/json'
       }

@@ -117,7 +117,8 @@ function mapLocalManga(r: any): MangaCard {
 
 async function localCatalog(filters: CatalogFilters, genreName = ''): Promise<MangaCard[]> {
   try {
-    await ensureDbInitialized();
+    // Public catalog reads must not run the schema migrations and admin seed
+    // on every cold server instance. Schema setup belongs to initialization.
     const rows = await sql`
       SELECT m.*,
         (SELECT count(*)::int FROM "Chapters" c WHERE c."MangaId" = m."Id") as chapters_count,

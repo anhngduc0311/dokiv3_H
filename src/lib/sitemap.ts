@@ -4,6 +4,14 @@ import { absoluteUrl, isoDate } from './seo';
 export const SITEMAP_SIZE = 5000;
 export const xmlEscape = (value: string) => value.replace(/[<>&'\"]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&apos;', '"': '&quot;' })[c]!);
 export const sitemapHeaders = { 'Content-Type': 'application/xml; charset=utf-8', 'Cache-Control': 'public, max-age=300, s-maxage=3600, stale-while-revalidate=86400' };
+export function sitemapIndex(paths: string[]) {
+  return [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+    ...paths.map(path => `  <sitemap>\n    <loc>${xmlEscape(absoluteUrl(path))}</loc>\n  </sitemap>`),
+    '</sitemapindex>',
+  ].join('\n');
+}
 export function urlset(rows: { path: string; modified?: string | Date | null }[]) {
   return `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${rows.map(row => {
     const date = isoDate(row.modified);

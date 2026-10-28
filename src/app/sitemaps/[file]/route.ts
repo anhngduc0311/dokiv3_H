@@ -1,4 +1,4 @@
-import { SITEMAP_SIZE, sitemapHeaders, sitemapRows, urlset } from '@/lib/sitemap';
+import { SITEMAP_SIZE, sitemapCount, sitemapHeaders, sitemapRows, urlset } from '@/lib/sitemap';
 import { CATALOG_SITEMAP_SIZE, catalogSitemapRows } from '@/lib/sitemap-catalog';
 
 export const dynamic = 'force-dynamic';
@@ -16,7 +16,15 @@ export async function GET(_req: Request, { params }: { params: Promise<{ file: s
       return new Response(urlset(rows), { headers: sitemapHeaders });
     }
     const rows = await sitemapRows(page);
-    if (!rows.length) return new Response('Not found', { status: 404 });
+    if (!rows.length) {
+      // Remote shards follow the local shards in the same numbered index.
+      // Keep catalog-N.xml above as a compatible alias for existing crawlers.
+      const localPages = Math.ceil(await sitemapCount() / SITEMAP_SIZE);
+      if (page < localPages) throw new Error('Local sitemap changed during pagination');
+      const catalogRows = await catalogSitemapRows(page - localPages);
+      // A shard with all entries moderated/stored locally may validly be empty.
+      return new Response(urlset(catalogRows), { headers: sitemapHeaders });
+    }
     return new Response(urlset(rows.map(row => ({ path: `${row.prefix}${encodeURIComponent(row.id)}`, modified: row.modified }))), { headers: sitemapHeaders });
   } catch (error) {
     console.error('[SEO] Sitemap shard unavailable', error instanceof Error ? error.name : 'UnknownError');

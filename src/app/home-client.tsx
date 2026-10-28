@@ -275,7 +275,7 @@ function HomeContent({ initialCatalog }: { initialCatalog: Page<Manga> }) {
 
     setLoading(true);
     try {
-      const r = await api.request<Page<Manga>>(path, 'GET', undefined, true);
+      const r = await api.request<Page<Manga>>(path, 'GET', undefined, true, initialCatalog.items.length === 0);
       if (!r.items?.length && p === 1) {
         throw new Error('Chưa tải được danh sách truyện từ nguồn dữ liệu. Vui lòng thử lại.');
       }
@@ -339,9 +339,14 @@ function HomeContent({ initialCatalog }: { initialCatalog: Page<Manga> }) {
   }, [page]);
 
   useEffect(() => {
-    void loadFeatured();
-    void loadTrending();
-  }, []);
+    // Give the main catalog and visible covers bandwidth before secondary lists.
+    if (loading) return;
+    const timer = setTimeout(() => {
+      void loadFeatured();
+      void loadTrending();
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [loading]);
 
   const goPage = (p: number) => {
     prefetchPage(p);

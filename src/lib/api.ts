@@ -154,25 +154,34 @@ export class ApiClient {
     }
   }
 
-  async request<T>(path: string, method = 'GET', body?: unknown, useCache = false): Promise<T> {
+  async request<T>(path: string, method = 'GET', body?: unknown, useCache = false, preferBrowser = false): Promise<T> {
     // Hover prefetches and mounted components can request the same data together.
     // Share GET work, including retries and the upstream fallback.
     if (method !== 'GET') return this.performRequest<T>(path, method, body, useCache);
     const existing = this.pending.get(path);
     if (existing) return existing as Promise<T>;
-    const pending = this.performRequest<T>(path, method, body, useCache)
+    const pending = this.performRequest<T>(path, method, body, useCache, preferBrowser)
       .finally(() => { this.pending.delete(path); });
     this.pending.set(path, pending);
     return pending;
   }
 
-  private async performRequest<T>(path: string, method: string, body: unknown, useCache: boolean): Promise<T> {
+  private async performRequest<T>(path: string, method: string, body: unknown, useCache: boolean, preferBrowser = false): Promise<T> {
     const isGet = method === 'GET';
     const shouldCache = isGet && (useCache || path.startsWith('/chapters/') || path.startsWith('/catalog/'));
     if (shouldCache) {
       const hit = this.cache.get(path);
       if (hit && hit.expiry > Date.now()) {
         return hit.data as T;
+      }
+    }
+    // SSR already tried the server's upstream connection. Do not repeat that
+    // failed round trip before starting browser recovery for an empty home.
+    if (isGet && preferBrowser && path.startsWith('/catalog/home?')) {
+      const recovered = await clientFallback<Page<Manga>>(path);
+      if (recovered?.items?.length) {
+        this.cache.set(path, { data: recovered, expiry: Date.now() + 15 * 60 * 1000 });
+        return recovered as T;
       }
     }
     const token = getStoredToken();
@@ -186,6 +195,7 @@ export class ApiClient {
         }
         const response = await fetch('/api' + path, {
           method,
+          ...(isGet && path.startsWith('/catalog/home?') ? { signal: AbortSignal.timeout(10000) } : {}),
           headers: {
             ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
             ...(token ? { Authorization: `Bearer ${token}` } : {})
