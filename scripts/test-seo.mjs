@@ -186,7 +186,7 @@ test('remote catalog is discoverable before any reader has saved it locally', as
   assert.deepEqual(await catalog.catalogSitemapRows(1), [{ path: '/truyen-tranh/481', modified: null }]);
 });
 
-test('catalog outage returns retryable 503 instead of publishing a partial index or shard', async () => {
+test('catalog outage preserves local sitemap index without caching and keeps failed shards retryable', async () => {
   const load = loader({
     './db': { sql: async () => [{ total: 29 }] },
     '@/lib/sitemap-catalog': {
@@ -198,10 +198,16 @@ test('catalog outage returns retryable 503 instead of publishing a partial index
   const index = await load('src/app/sitemap.xml/route.ts').GET();
   const shard = await load('src/app/sitemaps/[file]/route.ts').GET(new Request('https://www.dokihentai.com'),
     { params: Promise.resolve({ file: 'catalog-0.xml' }) });
-  for (const response of [index, shard]) {
-    assert.equal(response.status, 503);
-    assert.equal(response.headers.get('cache-control'), 'no-store');
-  }
+  assert.equal(index.status, 200);
+  assert.equal(index.headers.get('content-type'), 'application/xml; charset=utf-8');
+  assert.equal(index.headers.get('cache-control'), 'no-store');
+  const xml = await index.text();
+  assert.match(xml, /sitemap-static\.xml/);
+  assert.match(xml, /sitemaps\/0\.xml/);
+  assert.doesNotMatch(xml, /catalog-0\.xml/);
+  assert.equal(shard.status, 503);
+  assert.equal(shard.headers.get('cache-control'), 'no-store');
+  assert.equal(shard.headers.get('retry-after'), '300');
 });
 
 test('a shard containing only locally moderated/stored stories remains valid XML', async () => {
