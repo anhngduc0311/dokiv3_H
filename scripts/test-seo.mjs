@@ -38,10 +38,10 @@ const manga = { id: 'id/&', title: 'Tên truyện', author: 'Tác giả', descri
 
 test('metadata uses per-manga canonical, matching OG/Twitter and clean description', () => {
   const meta = seo.mangaMetadata(manga);
-  assert.equal(meta.alternates.canonical, 'https://dokihentai.com/truyen-tranh/id%2F%26');
+  assert.equal(meta.alternates.canonical, 'https://www.dokihentai.com/truyen-tranh/id%2F%26');
   assert.equal(meta.openGraph.url, meta.alternates.canonical);
   assert.equal(meta.openGraph.description, 'Mô tả & nội dung');
-  assert.equal(meta.twitter.images[0], 'https://dokihentai.com/cover.png');
+  assert.equal(meta.twitter.images[0], 'https://www.dokihentai.com/cover.png');
   assert.equal(meta.other.rating, 'adult');
 });
 test('untrusted content cannot break out of a JSON-LD script', () => {
@@ -72,21 +72,28 @@ test('sitemap escapes XML, encodes IDs, and omits fabricated lastmod', async () 
   const response = await GET(new Request('https://attacker.example/sitemaps/0.xml'), { params: Promise.resolve({ file: '0.xml' }) });
   assert.equal(response.status, 200);
   const xml = await response.text();
-  assert.match(xml, /https:\/\/dokihentai.com\/truyen-tranh\/a%26b/);
+  assert.match(xml, /https:\/\/www.dokihentai.com\/truyen-tranh\/a%26b/);
   const { urlset } = load('src/lib/sitemap.ts');
   assert.match(urlset([{ path: '/?a=1&b=2' }]), /&amp;b=2/);
   assert.ok(!urlset([{ path: '/' }]).includes('lastmod'));
 });
 test('sitemap index includes every shard beyond the old 1000-item cap', async () => {
-  const load = loader({ './db': { sql: async () => [{ total: 10001 }] } });
+  const load = loader({
+    './db': { sql: async () => [{ total: 10001 }] },
+    '@/lib/sitemap-catalog': { catalogSitemapPaths: async () => ['/sitemaps/catalog-0.xml', '/sitemaps/catalog-1.xml'] },
+  });
   const { GET } = load('src/app/sitemap.xml/route.ts');
   const response = await GET();
   const xml = await response.text();
-  assert.equal((xml.match(/<sitemap>/g) || []).length, 4);
+  assert.equal((xml.match(/<sitemap>/g) || []).length, 6);
   assert.match(xml, /sitemaps\/2.xml/);
+  assert.match(xml, /sitemaps\/catalog-1.xml/);
 });
 test('DB failures return retryable 503 and never cache a partial sitemap', async () => {
-  const load = loader({ './db': { sql: async () => { throw new Error('offline'); } } });
+  const load = loader({
+    './db': { sql: async () => { throw new Error('offline'); } },
+    '@/lib/sitemap-catalog': { catalogSitemapPaths: async () => [] },
+  });
   const response = await load('src/app/sitemap.xml/route.ts').GET();
   assert.equal(response.status, 503);
   assert.equal(response.headers.get('cache-control'), 'no-store');
@@ -96,7 +103,7 @@ test('invalid sitemap names are rejected before any database query', async () =>
   const load = loader({ './db': { sql: () => { throw new Error('must not query'); } } });
   const { GET } = load('src/app/sitemaps/[file]/route.ts');
   for (const file of ['-1.xml', '01.xml', 'x.xml', '1.json', '999999999999999999.xml']) {
-    const response = await GET(new Request('https://dokihentai.com'), { params: Promise.resolve({ file }) });
+    const response = await GET(new Request('https://www.dokihentai.com'), { params: Promise.resolve({ file }) });
     assert.equal(response.status, 404);
   }
 });
@@ -104,8 +111,78 @@ test('robots applies one consistent policy to all crawlers', () => {
   const robots = loader()('src/app/robots.ts').default();
   assert.equal(robots.rules.userAgent, '*');
   assert.ok(robots.rules.allow.includes('/api/catalog/image-proxy'));
-  assert.equal(robots.sitemap, 'https://dokihentai.com/sitemap.xml');
+  assert.equal(robots.sitemap, 'https://www.dokihentai.com/sitemap.xml');
   assert.ok(!robots.rules.disallow.includes('/dang-nhap'));
+});
+
+test('remote catalog is discoverable before any reader has saved it locally', async () => {
+  const calls = [];
+  const load = loader({
+    './mimi-catalog': { getMimiSitemapPage: async page => {
+      calls.push(page);
+      return { total_items: 481, items: Array.from({ length: page <= 10 ? 48 : 1 },
+        (_, i) => ({ id: (page - 1) * 48 + i + 1, last_updated: null })) };
+    } },
+    './db': { sql: async strings => {
+      assert.match(strings.join(''), /^SELECT/);
+      assert.match(strings.join(''), /"Id"::text = ANY/);
+      return [{ Id: '1' }, { Id: '2' }];
+    } },
+  });
+  const catalog = load('src/lib/sitemap-catalog.ts');
+  assert.deepEqual(await catalog.catalogSitemapPaths(), ['/sitemaps/catalog-0.xml', '/sitemaps/catalog-1.xml']);
+  calls.length = 0;
+  const first = await catalog.catalogSitemapRows(0);
+  assert.equal(first.length, 478);
+  assert.equal(first[0].path, '/truyen-tranh/3');
+  assert.equal(first.at(-1).path, '/truyen-tranh/480');
+  assert.deepEqual(calls, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+  assert.deepEqual(await catalog.catalogSitemapRows(1), [{ path: '/truyen-tranh/481', modified: null }]);
+});
+
+test('catalog outage returns retryable 503 instead of publishing a partial index or shard', async () => {
+  const load = loader({
+    './db': { sql: async () => [{ total: 29 }] },
+    '@/lib/sitemap-catalog': {
+      CATALOG_SITEMAP_SIZE: 480,
+      catalogSitemapPaths: async () => { throw new Error('upstream unavailable'); },
+      catalogSitemapRows: async () => { throw new Error('upstream unavailable'); },
+    },
+  });
+  const index = await load('src/app/sitemap.xml/route.ts').GET();
+  const shard = await load('src/app/sitemaps/[file]/route.ts').GET(new Request('https://www.dokihentai.com'),
+    { params: Promise.resolve({ file: 'catalog-0.xml' }) });
+  for (const response of [index, shard]) {
+    assert.equal(response.status, 503);
+    assert.equal(response.headers.get('cache-control'), 'no-store');
+  }
+});
+
+test('a shard containing only locally moderated/stored stories remains valid XML', async () => {
+  const load = loader({
+    './db': { sql: async () => { throw new Error('must not query local shard'); } },
+    '@/lib/sitemap-catalog': { CATALOG_SITEMAP_SIZE: 480, catalogSitemapRows: async () => [] },
+  });
+  const response = await load('src/app/sitemaps/[file]/route.ts').GET(new Request('https://www.dokihentai.com'),
+    { params: Promise.resolve({ file: 'catalog-0.xml' }) });
+  assert.equal(response.status, 200);
+  assert.match(await response.text(), /<urlset[^>]*><\/urlset>/);
+});
+
+test('strict sitemap adapter uses the real upstream page size and rejects incomplete responses', async () => {
+  const originalFetch = globalThis.fetch;
+  try {
+    globalThis.fetch = async url => {
+      assert.match(url, /page=2&page_size=48&sort=title$/);
+      return Response.json({ items: [{ id: 123 }], total_items: 49, page: 2, page_size: 48 });
+    };
+    const { getMimiSitemapPage } = loader()('src/lib/mimi-catalog.ts');
+    assert.equal((await getMimiSitemapPage(2)).items[0].id, 123);
+    globalThis.fetch = async () => Response.json({ items: [], page: 2, page_size: 48 });
+    await assert.rejects(getMimiSitemapPage(2), /Invalid sitemap catalog response/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
 test('manga content and chapter links exist in HTML before effects/JavaScript', () => {
@@ -301,7 +378,7 @@ test('a failed chapter list does not discard an available manga detail', async (
 
 test('detail API returns retryable 503 and the browser recovers from that response', async () => {
   const route = loader({ '@/lib/catalog-service': { getMangaDetail: async () => { throw new Error('upstream unavailable'); } } })('src/app/api/catalog/[id]/route.ts');
-  const response = await route.GET(new Request('https://dokihentai.com/api/catalog/70756'), { params: Promise.resolve({ id: '70756' }) });
+  const response = await route.GET(new Request('https://www.dokihentai.com/api/catalog/70756'), { params: Promise.resolve({ id: '70756' }) });
   assert.equal(response.status, 503);
   assert.equal(response.headers.get('cache-control'), 'no-store');
   const originalFetch = globalThis.fetch;

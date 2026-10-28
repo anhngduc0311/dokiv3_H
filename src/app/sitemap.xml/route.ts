@@ -1,11 +1,13 @@
 import { absoluteUrl } from '@/lib/seo';
 import { SITEMAP_SIZE, sitemapCount, sitemapHeaders, xmlEscape } from '@/lib/sitemap';
+import { catalogSitemapPaths } from '@/lib/sitemap-catalog';
 
 export const dynamic = 'force-dynamic';
 export async function GET() {
   try {
-    const pages = Math.ceil(await sitemapCount() / SITEMAP_SIZE);
-    const paths = ['/sitemap-static.xml', ...Array.from({ length: pages }, (_, i) => `/sitemaps/${i}.xml`)];
+    const [count, catalogPaths] = await Promise.all([sitemapCount(), catalogSitemapPaths()]);
+    const pages = Math.ceil(count / SITEMAP_SIZE);
+    const paths = ['/sitemap-static.xml', ...Array.from({ length: pages }, (_, i) => `/sitemaps/${i}.xml`), ...catalogPaths];
     return new Response(`<?xml version="1.0" encoding="UTF-8"?><sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${paths.map(path => `<sitemap><loc>${xmlEscape(absoluteUrl(path))}</loc></sitemap>`).join('')}</sitemapindex>`, { headers: sitemapHeaders });
   } catch (error) {
     console.error('[SEO] Sitemap index unavailable', error instanceof Error ? error.name : 'UnknownError');

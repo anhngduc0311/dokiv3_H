@@ -9,7 +9,7 @@ import { AppShell } from '../components/layout/app-shell';
 
 export const metadata: Metadata = {
   ...pageMetadata({ title: 'Đọc truyện tranh tiếng Việt', path: '/' }),
-  metadataBase: new URL('https://dokihentai.com'),
+  metadataBase: new URL('https://www.dokihentai.com'),
   icons: { icon: '/favicon.svg' },
   authors: [{ name: 'DokiHentai' }],
 };
@@ -25,20 +25,20 @@ const jsonLd = {
   '@graph': [
     {
       '@type': 'WebSite',
-      '@id': 'https://dokihentai.com/#website',
-      url: 'https://dokihentai.com/',
+      '@id': 'https://www.dokihentai.com/#website',
+      url: 'https://www.dokihentai.com/',
       name: 'DokiHentai',
       alternateName: ['Doki Hentai', 'dokihentai', 'dokihentai.com', 'DokiHentai'],
       description: 'Website đọc truyện tranh online miễn phí cập nhật mới nhất mỗi ngày',
       publisher: {
-        '@id': 'https://dokihentai.com/#organization'
+        '@id': 'https://www.dokihentai.com/#organization'
       },
       potentialAction: [
         {
           '@type': 'SearchAction',
           target: {
             '@type': 'EntryPoint',
-            urlTemplate: 'https://dokihentai.com/tim-truyen-nang-cao?q={search_term_string}'
+            urlTemplate: 'https://www.dokihentai.com/tim-truyen-nang-cao?q={search_term_string}'
           },
           'query-input': 'required name=search_term_string'
         }
@@ -47,13 +47,13 @@ const jsonLd = {
     },
     {
       '@type': 'Organization',
-      '@id': 'https://dokihentai.com/#organization',
+      '@id': 'https://www.dokihentai.com/#organization',
       name: 'DokiHentai',
       alternateName: ['Doki Hentai', 'dokihentai', 'dokihentai.com'],
-      url: 'https://dokihentai.com/',
+      url: 'https://www.dokihentai.com/',
       logo: {
         '@type': 'ImageObject',
-        url: 'https://dokihentai.com/brand-mark.png',
+        url: 'https://www.dokihentai.com/brand-mark.png',
         caption: 'DokiHentai Logo'
       }
     }

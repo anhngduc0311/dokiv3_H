@@ -147,6 +147,24 @@ export interface MimiCatalogFilters {
   pageSize?: number;
 }
 
+// A strict, lightweight catalog read for sitemaps. An outage must not be
+// mistaken for an empty catalog and cached as a successful partial sitemap.
+export async function getMimiSitemapPage(page: number) {
+  const result = await mimiFetch<{
+    items: { id: number | string; last_updated?: string | null }[];
+    total_items: number;
+    page: number;
+    page_size: number;
+  }>(`/manga?page=${page}&page_size=48&sort=title`, undefined, true);
+  if (!result || !Array.isArray(result.items) || !Number.isSafeInteger(result.total_items)
+    || result.total_items < 0 || result.page !== page || result.page_size !== 48
+    || result.items.length !== Math.min(48, Math.max(0, result.total_items - (page - 1) * 48))
+    || result.items.some(item => !/^\d+$/.test(String(item.id)))) {
+    throw new Error('Invalid sitemap catalog response');
+  }
+  return result;
+}
+
 export async function getMimiCatalog(filters: MimiCatalogFilters): Promise<CatalogPage> {
   const page = Math.max(1, filters.page || 1);
   const pageSize = Math.max(1, Math.min(50, filters.pageSize || 24));

@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import type { MangaCard, ReaderData } from './catalog-service';
 
 // Never derive canonical URLs from untrusted request/forwarded-host headers.
-export const SITE_URL = 'https://dokihentai.com';
+export const SITE_URL = 'https://www.dokihentai.com';
 export const SITE_NAME = 'DokiHentai';
 export const SITE_DESCRIPTION = 'Đọc truyện tranh tiếng Việt tại DokiHentai. Khám phá truyện, tìm theo tác giả và theo dõi các chương mới cập nhật.';
 export type SearchParams = Record<string, string | string[] | undefined>;
