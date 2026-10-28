@@ -13,6 +13,8 @@ import { Icon } from '../components/ui/icon';
 import { MangaCard } from '../components/ui/manga-card';
 import { Pagination } from '../components/ui/pagination';
 import { Sidebar } from '../components/layout/sidebar';
+import { HomeEntryLoader } from '../components/ui/home-entry-loader';
+import { PageLoadingScreen } from '../components/ui/page-loading-screen';
 
 function HomeContent({ initialCatalog }: { initialCatalog: Page<Manga> }) {
   const router = useRouter();
@@ -364,6 +366,7 @@ function HomeContent({ initialCatalog }: { initialCatalog: Page<Manga> }) {
 
   return (
     <div className="home-page">
+      <HomeEntryLoader loading={loading} failed={!!error} />
       <h1 className="sr-only">Đọc truyện tranh tiếng Việt tại DokiHentai</h1>
       {/* SPOTLIGHT SECTION */}
       <section className="doki-spotlight" aria-label="Truyện nổi bật">
@@ -640,7 +643,7 @@ function HomeContent({ initialCatalog }: { initialCatalog: Page<Manga> }) {
 
 export default function HomePage({ initialCatalog }: { initialCatalog: Page<Manga> }) {
   return (
-    <Suspense fallback={<div className="loading-panel"><div className="search-spinner"></div></div>}>
+    <Suspense fallback={<PageLoadingScreen />}>
       <HomeContent initialCatalog={initialCatalog} />
     </Suspense>
   );

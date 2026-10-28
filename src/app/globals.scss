@@ -122,6 +122,12 @@ body { --font-main: var(--font-doki), system-ui, sans-serif; }
   border-radius: 99px;
   animation: splashIndeterminate 1.4s infinite cubic-bezier(0.65, 0, 0.35, 1);
 }
+.splash-caption {
+  margin: 18px 24px 0;
+  color: #a9a5b5;
+  font-size: 13px;
+  line-height: 1.6;
+}
 @keyframes splashAppear {
   from { opacity: 0; transform: scale(0.92); }
   to { opacity: 1; transform: scale(1); }
