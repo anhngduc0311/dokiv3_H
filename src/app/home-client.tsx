@@ -106,6 +106,13 @@ function HomeContent({ initialCatalog }: { initialCatalog: Page<Manga> }) {
     const epoch = ++selectionEpochRef.current;
     if (!candidates.length) return;
 
+    // Render titles and covers as soon as catalog data arrives. Image probing
+    // only improves the selection; it must not gate the first banner.
+    if (!currentSpotlight) {
+      setRankedSpotlights(candidates);
+      setSpotlightIndex(0);
+    }
+
     void (async () => {
       await loadSpotlightImages(
         candidates,
@@ -234,7 +241,7 @@ function HomeContent({ initialCatalog }: { initialCatalog: Page<Manga> }) {
 
   const prefetchPage = (p: number) => {
     if (p >= 1) {
-      api.prefetch('/catalog/home?page=' + p);
+      api.prefetch('/catalog/home?page=' + p + '&pageSize=30');
     }
   };
 

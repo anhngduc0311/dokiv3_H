@@ -36,6 +36,52 @@ function loader(overrides = {}) {
 const seo = loader()('src/lib/seo.ts');
 const manga = { id: 'id/&', title: 'Tên truyện', author: 'Tác giả', description: '<p>Mô tả &amp; nội dung</p>', cover: '/cover.png', genres: ['Fantasy'], updatedAt: '2026-10-01', chapters: [], source: 'mimihentai', rating: 9 };
 
+test('home starts upstream loading while database initialization is pending', async () => {
+  let releaseDb;
+  const dbReady = new Promise(resolve => { releaseDb = resolve; });
+  let remoteStarted = false;
+  const load = loader({
+    './db': { ensureDbInitialized: () => dbReady, sql: async () => [] },
+    './redis': { cacheGet: async () => null, cacheSet: async () => {} },
+    './mimi-catalog': { getMimiCatalog: async () => {
+      remoteStarted = true;
+      return { items: [manga], total: 1, page: 1, pageSize: 30 };
+    } },
+  });
+  const pending = load('src/lib/catalog-service.ts').getHomeCatalog();
+  await new Promise(resolve => setImmediate(resolve));
+  const startedBeforeDb = remoteStarted;
+  releaseDb();
+  const result = await pending;
+  assert.equal(startedBeforeDb, true);
+  assert.deepEqual(result.items, [manga]);
+});
+
+test('concurrent GET requests share one fetch and later reads reuse cache', async () => {
+  const originalFetch = globalThis.fetch;
+  let release;
+  const responseReady = new Promise(resolve => { release = resolve; });
+  let calls = 0;
+  globalThis.fetch = async () => {
+    calls++;
+    await responseReady;
+    return { ok: true, status: 200, json: async () => ({ items: [manga] }) };
+  };
+  try {
+    const load = loader({ './utils': { getStoredToken: () => null }, './mimi-client': {} });
+    const { ApiClient } = load('src/lib/api.ts');
+    const client = new ApiClient();
+    const first = client.request('/catalog/home?page=1&pageSize=30');
+    const second = client.request('/catalog/home?page=1&pageSize=30');
+    release();
+    assert.deepEqual(await first, await second);
+    await client.request('/catalog/home?page=1&pageSize=30');
+    assert.equal(calls, 1);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test('metadata uses per-manga canonical, matching OG/Twitter and clean description', () => {
   const meta = seo.mangaMetadata(manga);
   assert.equal(meta.alternates.canonical, 'https://www.dokihentai.com/truyen-tranh/id%2F%26');

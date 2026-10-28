@@ -10,10 +10,18 @@ const databaseUrl =
 export const sql: NeonQueryFunction<false, false> = neon(databaseUrl);
 
 let dbInitialized = false;
+let dbInitialization: Promise<void> | null = null;
 
 export async function ensureDbInitialized() {
   if (dbInitialized) return;
+  // Concurrent homepage requests share a single migration/seed pass.
+  if (!dbInitialization) {
+    dbInitialization = initializeDb().finally(() => { dbInitialization = null; });
+  }
+  return dbInitialization;
+}
 
+async function initializeDb() {
   try {
     // 1. Ensure tables exist
     await sql`

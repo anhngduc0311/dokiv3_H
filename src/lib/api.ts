@@ -85,6 +85,7 @@ async function clientFallback<T>(path: string): Promise<T | null> {
 
 export class ApiClient {
   private cache = new Map<string, { data: unknown; expiry: number }>();
+  private pending = new Map<string, Promise<unknown>>();
   private preloadedImages = new Set<string>();
 
   hasCached(path: string): boolean {
@@ -154,6 +155,18 @@ export class ApiClient {
   }
 
   async request<T>(path: string, method = 'GET', body?: unknown, useCache = false): Promise<T> {
+    // Hover prefetches and mounted components can request the same data together.
+    // Share GET work, including retries and the upstream fallback.
+    if (method !== 'GET') return this.performRequest<T>(path, method, body, useCache);
+    const existing = this.pending.get(path);
+    if (existing) return existing as Promise<T>;
+    const pending = this.performRequest<T>(path, method, body, useCache)
+      .finally(() => { this.pending.delete(path); });
+    this.pending.set(path, pending);
+    return pending;
+  }
+
+  private async performRequest<T>(path: string, method: string, body: unknown, useCache: boolean): Promise<T> {
     const isGet = method === 'GET';
     const shouldCache = isGet && (useCache || path.startsWith('/chapters/') || path.startsWith('/catalog/'));
     if (shouldCache) {

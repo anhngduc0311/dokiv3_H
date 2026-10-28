@@ -165,14 +165,14 @@ export async function searchCatalog(params: CatalogFilters): Promise<CatalogPage
 
   const genreName = filters.genre || '';
 
-  // Get local custom/admin manga if any
-  const local = await localCatalog(filters, genreName);
+  // Independent sources should not add their network latency together.
+  const [local, remote] = await Promise.all([
+    localCatalog(filters, genreName),
+    getMimiCatalog(filters)
+  ]);
   const offset = (page - 1) * pageSize;
   const localPage = local.slice(offset, offset + pageSize);
   const needed = pageSize - localPage.length;
-
-  // Remote MimiHentai catalog
-  const remote = await getMimiCatalog(filters);
 
   const result: CatalogPage = {
     items: [...localPage, ...remote.items.slice(0, needed > 0 ? needed : remote.items.length)],
