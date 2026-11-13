@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { sql, ensureDbInitialized } from '@/lib/db';
 import { getUserFromRequest, requireAdmin } from '@/lib/auth';
+import { getTags } from '@/lib/catalog-service';
 import { v4 as uuidv4 } from 'uuid';
 
 export async function GET(req: Request) {
@@ -13,6 +14,14 @@ export async function GET(req: Request) {
 
     const { searchParams } = new URL(req.url);
     const type = (searchParams.get('type') || '').trim();
+
+    if (type === 'genre' && searchParams.get('catalog') === 'public') {
+      const genres = await getTags();
+      const collator = new Intl.Collator('vi', { sensitivity: 'base' });
+      return NextResponse.json(genres
+        .map(genre => ({ ...genre, type: 'genre', readOnly: true }))
+        .sort((a, b) => collator.compare(a.name, b.name)));
+    }
 
     let rows: any[];
     if (type) {

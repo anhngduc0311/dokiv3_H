@@ -156,11 +156,12 @@ export interface AdminManga {
   views: number;
   country: string;
   genres: string[];
-  chaptersCount: number;
+  chaptersCount: number | null;
   updatedAt: string;
 }
 
 export interface AdminChapter {
+  readOnly?: boolean;
   id: string;
   mangaId: string;
   number: number;
@@ -217,6 +218,7 @@ export interface AdminReport {
 }
 
 export interface AdminTaxonomy {
+  readOnly?: boolean;
   id: string;
   type: string;
   name: string;

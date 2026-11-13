@@ -17,6 +17,19 @@ export async function GET(
 
     const { id: mangaId } = await params;
 
+    if (new URL(req.url).searchParams.get('catalog') === 'public') {
+      const { items } = await getMangaChapters(mangaId);
+      return NextResponse.json(items.map(chapter => ({
+        ...chapter,
+        contentType: chapter.contentType ?? 'comic',
+        pagesCount: chapter.pagesCount ?? 0,
+        isLocked: false,
+        coinPrice: 0,
+        hasContent: false,
+        readOnly: true,
+      })));
+    }
+
     const localRows = await sql`
       SELECT "Id", "MangaId", "Number", "Title", "Language", "ContentType",
              "IsLocked", "CoinPrice", "UnlockAt", "ScheduledPublishAt", "PublishedAt",
@@ -65,14 +78,15 @@ export async function GET(
               number: num,
               title: ext.title || `Chương ${num}`,
               language: ext.language || 'vi',
-              contentType: 'comic',
+              contentType: ext.contentType ?? 'comic',
               isLocked: false,
               coinPrice: 0,
               unlockAt: null,
               scheduledPublishAt: null,
               publishedAt: ext.publishedAt,
-              pagesCount: 0,
-              hasContent: false
+              pagesCount: ext.pagesCount ?? 0,
+              hasContent: false,
+              readOnly: true
             });
           }
         }

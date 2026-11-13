@@ -49,6 +49,7 @@ export default function AdminPage() {
   const [mangas, setMangas] = useState<AdminManga[]>([]);
   const [mangaTotal, setMangaTotal] = useState(0);
   const [mangaPage, setMangaPage] = useState(1);
+  const [mangaCatalog, setMangaCatalog] = useState<'public' | 'local'>('public');
   const [mangaQuery, setMangaQuery] = useState('');
   const [mangaStatusFilter, setMangaStatusFilter] = useState('all');
   const [mangaSourceFilter, setMangaSourceFilter] = useState('all');
@@ -159,6 +160,8 @@ export default function AdminPage() {
   // Taxonomy state
   const [taxonomyType, setTaxonomyType] = useState<'genre' | 'tag' | 'author' | 'group'>('genre');
   const taxonomyTypeRef = useRef(taxonomyType);
+  const [publicGenres, setPublicGenres] = useState(true);
+  const publicGenresRef = useRef(true);
   const [taxonomyItems, setTaxonomyItems] = useState<AdminTaxonomy[]>([]);
   const [taxonomyModalOpen, setTaxonomyModalOpen] = useState(false);
   const [taxonomyEditMode, setTaxonomyEditMode] = useState(false);
@@ -302,7 +305,8 @@ export default function AdminPage() {
     query = mangaQuery,
     status = mangaStatusFilter,
     source = mangaSourceFilter,
-    visibility = mangaVisibilityFilter
+    visibility = mangaVisibilityFilter,
+    catalog = mangaCatalog
   ) => {
     const request = ++mangaRequest.current;
     setMangaLoading(true);
@@ -314,6 +318,7 @@ export default function AdminPage() {
             page,
             pageSize: 15,
             q: query.trim(),
+            catalog,
             status,
             sourceType: source,
             visibility
@@ -468,13 +473,14 @@ export default function AdminPage() {
   const manageMangaChapters = (m: AdminManga) => {
     setSelectedMangaId(m.id);
     setSelectedManga(m);
-    handleSwitchTab('chapters');
+    setActiveTab('chapters');
+    void loadChapters(m.id, m);
   };
 
   // =========================================================================
   // 3. CHAPTER MANAGEMENT
   // =========================================================================
-  const loadChapters = async (mangaId: string) => {
+  const loadChapters = async (mangaId: string, manga = selectedManga) => {
     if (!mangaId) return;
     const request = ++chaptersRequest.current;
     setChaptersLoading(true);
@@ -483,10 +489,11 @@ export default function AdminPage() {
     setChapterPage(1);
     setChapterSearchQuery('');
     try {
-      const res = await api.request<AdminChapter[]>(`/admin/mangas/${mangaId}/chapters`);
+      const scope = manga?.sourceType === 'public' ? '?catalog=public' : '';
+      const res = await api.request<AdminChapter[]>(`/admin/mangas/${encodeURIComponent(mangaId)}/chapters${scope}`);
       if (request !== chaptersRequest.current) return;
       setChapters(res || []);
-      if (!selectedManga || selectedManga.id !== mangaId) {
+      if (!manga || manga.id !== mangaId) {
         const m = await api.request<any>('/admin/mangas/' + mangaId);
         if (request === chaptersRequest.current) setSelectedManga(m);
       }
@@ -965,13 +972,14 @@ export default function AdminPage() {
   // =========================================================================
   // 4. TAXONOMY MANAGEMENT
   // =========================================================================
-  const loadTaxonomy = async (type = taxonomyTypeRef.current) => {
+  const loadTaxonomy = async (type = taxonomyTypeRef.current, fromWeb = publicGenresRef.current) => {
     const request = ++taxonomyRequest.current;
     setTaxonomyLoading(true);
     setTaxonomyLoadError('');
     setTaxonomyItems([]);
     try {
-      const items = await api.request<AdminTaxonomy[]>('/admin/taxonomy?type=' + type);
+      const scope = type === 'genre' && fromWeb ? '&catalog=public' : '';
+      const items = await api.request<AdminTaxonomy[]>('/admin/taxonomy?type=' + type + scope);
       if (request === taxonomyRequest.current) setTaxonomyItems(items || []);
     } catch (e: any) {
       if (request === taxonomyRequest.current) setTaxonomyLoadError(e.message || 'Không tải được danh mục taxonomy.');
@@ -1275,10 +1283,12 @@ export default function AdminPage() {
     );
   }
 
-  const hasMangaFilters = Boolean(mangaQuery.trim()) || [mangaStatusFilter, mangaSourceFilter, mangaVisibilityFilter].some(filter => filter !== 'all');
+  const hasMangaFilters = Boolean(mangaQuery.trim()) || (mangaCatalog === 'local'
+    && [mangaStatusFilter, mangaSourceFilter, mangaVisibilityFilter].some(filter => filter !== 'all'));
   const mangaEmptyMessage = hasMangaFilters
-    ? 'Không tìm thấy truyện đã lưu phù hợp với bộ lọc.'
-    : 'Chưa có truyện nào được lưu. Chọn “Thêm truyện mới” để bắt đầu.';
+    ? 'Không tìm thấy truyện phù hợp với bộ lọc.'
+    : mangaCatalog === 'public' ? 'Kho truyện trên web chưa trả về dữ liệu.' : 'Chưa có truyện nào được lưu. Chọn “Thêm truyện mới” để bắt đầu.';
+  const viewingPublicGenres = taxonomyType === 'genre' && publicGenres;
   const refreshing = loading || (activeTab === 'mangas' && mangaLoading)
     || (activeTab === 'chapters' && chaptersLoading) || (activeTab === 'taxonomy' && taxonomyLoading);
 
@@ -1737,7 +1747,7 @@ export default function AdminPage() {
                   <div>
                     <h1 className="pane-title">Quản lý truyện tranh</h1>
                     <p className="pane-subtitle">
-                      Quản lý truyện đã lưu trong hệ thống. Kho truyện từ nguồn ngoài được xem ở trang Khám phá.
+                      Xem kho truyện đang hiển thị trên web hoặc chỉnh sửa truyện đã lưu.
                     </p>
                   </div>
                   <div className="pane-actions">
@@ -1748,12 +1758,23 @@ export default function AdminPage() {
                 </div>
 
                 {/* Filters bar */}
+                <div className="sub-tabs-bar">
+                  {(['public', 'local'] as const).map(catalog => (
+                    <button key={catalog} type="button" className={`sub-tab-btn ${mangaCatalog === catalog ? 'active' : ''}`} onClick={() => {
+                      setMangaCatalog(catalog);
+                      setMangaPage(1);
+                      void loadMangas(1, mangaQuery, mangaStatusFilter, mangaSourceFilter, mangaVisibilityFilter, catalog);
+                    }}>
+                      {catalog === 'public' ? 'Kho truyện trên web' : 'Truyện đã lưu'}
+                    </button>
+                  ))}
+                </div>
                 <div className="filter-toolbar glass-card">
                   <div className="search-input-wrap">
                     <Icon name="search" />
                     <input
                       type="text"
-                      placeholder="Tìm theo tên truyện, tác giả..."
+                      placeholder={mangaCatalog === 'public' ? 'Tìm truyện trên web...' : 'Tìm theo tên truyện, tác giả...'}
                       value={mangaQuery}
                       onChange={e => {
                         const val = e.target.value;
@@ -1764,7 +1785,7 @@ export default function AdminPage() {
                     />
                   </div>
 
-                  <div className="filter-selects">
+                  {mangaCatalog === 'local' && <div className="filter-selects">
                     <select
                       value={mangaStatusFilter}
                       onChange={e => {
@@ -1810,7 +1831,7 @@ export default function AdminPage() {
                       <option value="hidden">Đang ẩn</option>
                       <option value="draft">Bản nháp</option>
                     </select>
-                  </div>
+                  </div>}
                 </div>
 
                 {/* Manga Table */}
@@ -1871,7 +1892,7 @@ export default function AdminPage() {
                                   : 'crawl'
                               }`}
                             >
-                              {m.sourceType === 'original'
+                              {m.sourceType === 'public' ? 'Kho web' : m.sourceType === 'original'
                                 ? 'Sáng tác'
                                 : m.sourceType === 'translation'
                                 ? 'Dịch thuật'
@@ -1901,7 +1922,7 @@ export default function AdminPage() {
                           </td>
                           <td>
                             <button className="btn-table-chapters" onClick={() => manageMangaChapters(m)}>
-                              <Icon name="layers" /> <span>{m.chaptersCount} chương</span>
+                              <Icon name="layers" /> <span>{m.chaptersCount == null ? 'Xem chương' : `${m.chaptersCount} chương`}</span>
                             </button>
                           </td>
                           <td>{compact(m.views)}</td>
@@ -1915,6 +1936,7 @@ export default function AdminPage() {
                               >
                                 <Icon name="layers" />
                               </button>
+                              {mangaCatalog === 'local' && <>
                               <button
                                 className="icon-btn-action"
                                 onClick={() => openEditMangaModal(m)}
@@ -1936,6 +1958,7 @@ export default function AdminPage() {
                               >
                                 <Icon name="trash" />
                               </button>
+                              </>}
                             </div>
                           </td>
                         </tr>
@@ -2062,9 +2085,9 @@ export default function AdminPage() {
                     >
                       <Icon name="download" /> <span>Tải truyện theo chương</span>
                     </button>
-                    <button className="btn-primary" onClick={openCreateChapterModal} disabled={!selectedMangaId || chaptersLoading || !!chaptersLoadError}>
+                    {selectedManga?.sourceType !== 'public' && <button className="btn-primary" onClick={openCreateChapterModal} disabled={!selectedMangaId || chaptersLoading || !!chaptersLoadError}>
                       <Icon name="plus" /> <span>Thêm chương mới</span>
-                    </button>
+                    </button>}
                   </div>
                 </div>
 
@@ -2106,7 +2129,7 @@ export default function AdminPage() {
                   ) : (
                     <div className="no-manga-selected">
                       <Icon name="book" />
-                      <p>Chọn truyện đã lưu trong mục Quản lý truyện để xem và chỉnh sửa chương.</p>
+                      <p>Chọn truyện trong mục Quản lý truyện để xem danh sách chương.</p>
                       <button className="btn-primary" onClick={() => handleSwitchTab('mangas')}>
                         Danh sách truyện
                       </button>
@@ -2213,6 +2236,7 @@ export default function AdminPage() {
                                   >
                                     <Icon name="compass" />
                                   </Link>
+                                  {!c.readOnly && <>
                                   <button
                                     className="icon-btn-action"
                                     onClick={() => openEditChapterModal(c)}
@@ -2227,6 +2251,7 @@ export default function AdminPage() {
                                   >
                                     <Icon name="trash" />
                                   </button>
+                                  </>}
                                 </div>
                               </td>
                             </tr>
@@ -2237,7 +2262,7 @@ export default function AdminPage() {
                                 <div className="empty-table">
                                   {chaptersLoading ? 'Đang tải danh sách chương…' : chaptersLoadError || (chapterSearchQuery
                                     ? 'Không tìm thấy chương nào phù hợp với từ khóa.'
-                                    : 'Bộ truyện này chưa có chương nào. Nhấn "+ Thêm chương mới" để bắt đầu!')}
+                                    : 'Bộ truyện này chưa có chương nào.')}
                                 </div>
                               </td>
                             </tr>
@@ -2340,13 +2365,13 @@ export default function AdminPage() {
                   <div>
                     <h1 className="pane-title">Quản lý Phân loại & Taxonomy</h1>
                     <p className="pane-subtitle">
-                      Quản lý thể loại, tag, tác giả và nhóm dịch được lưu trong hệ thống.
+                      Xem thể loại trên web và quản lý các phân loại đã lưu.
                     </p>
                   </div>
                   <div className="pane-actions">
-                    <button className="btn-primary" onClick={openCreateTaxonomyModal}>
+                    {!viewingPublicGenres && <button className="btn-primary" onClick={openCreateTaxonomyModal}>
                       <Icon name="plus" /> <span>Thêm mục mới</span>
-                    </button>
+                    </button>}
                   </div>
                 </div>
 
@@ -2379,15 +2404,28 @@ export default function AdminPage() {
                 </div>
 
                 {/* Taxonomy Grid */}
+                {taxonomyType === 'genre' && <div className="sub-tabs-bar">
+                  {[true, false].map(fromWeb => (
+                    <button key={String(fromWeb)} type="button" className={`sub-tab-btn ${publicGenres === fromWeb ? 'active' : ''}`} onClick={() => {
+                      publicGenresRef.current = fromWeb;
+                      setPublicGenres(fromWeb);
+                      void loadTaxonomy('genre', fromWeb);
+                    }}>
+                      {fromWeb ? 'Thể loại trên web' : 'Thể loại đã lưu'}
+                    </button>
+                  ))}
+                </div>}
                 <div className="taxonomy-grid mt-4">
                   {taxonomyItems.map(item => (
                     <div key={item.id} className="taxonomy-card glass-card">
                       <div className="tax-card-top">
                         <div>
                           <h3 className="tax-name">{item.name}</h3>
-                          <code className="tax-slug">/{item.slug}</code>
+                          {item.readOnly
+                            ? <Link href={`/tim-truyen-nang-cao?genre=${encodeURIComponent(item.id)}`}>Xem trên web</Link>
+                            : <code className="tax-slug">/{item.slug}</code>}
                         </div>
-                        <div className="action-buttons">
+                        {!item.readOnly && <div className="action-buttons">
                           <button
                             className="icon-btn-action"
                             onClick={() => openEditTaxonomyModal(item)}
@@ -2402,9 +2440,9 @@ export default function AdminPage() {
                           >
                             <Icon name="trash" />
                           </button>
-                        </div>
+                        </div>}
                       </div>
-                      <p className="tax-desc">{item.description || 'Chưa có mô tả cho phân loại này.'}</p>
+                      {!item.readOnly && <p className="tax-desc">{item.description || 'Chưa có mô tả cho phân loại này.'}</p>}
                     </div>
                   ))}
                   {!taxonomyItems.length && (

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { sql, ensureDbInitialized } from '@/lib/db';
 import { getUserFromRequest, requireAdmin } from '@/lib/auth';
-import { getMangaChapters } from '@/lib/catalog-service';
+import { getMangaChapters, searchCatalog } from '@/lib/catalog-service';
 import { v4 as uuidv4 } from 'uuid';
 
 export async function GET(req: Request) {
@@ -13,12 +13,27 @@ export async function GET(req: Request) {
     }
 
     const { searchParams } = new URL(req.url);
-    const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
-    const pageSize = Math.min(100, Math.max(1, parseInt(searchParams.get('pageSize') || '15', 10)));
+    const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
+    const pageSize = Math.min(100, Math.max(1, parseInt(searchParams.get('pageSize') || '15', 10) || 15));
     const q = (searchParams.get('q') || '').trim();
     const status = searchParams.get('status') || 'all';
     const sourceType = searchParams.get('sourceType') || 'all';
     const visibility = searchParams.get('visibility') || 'all';
+
+    if (searchParams.get('catalog') === 'public') {
+      const catalog = await searchCatalog({ page, pageSize: Math.min(pageSize, 50), q, sort: 'latest' });
+      const items = catalog.items.map(manga => ({
+        ...manga,
+        artist: '',
+        sourceType: 'public',
+        isHidden: false,
+        isDraft: false,
+        featured: false,
+        views: manga.views ?? 0,
+        chaptersCount: manga.totalChapters ?? manga.chaptersCount ?? null,
+      }));
+      return NextResponse.json({ ...catalog, items });
+    }
 
     const offset = (page - 1) * pageSize;
 

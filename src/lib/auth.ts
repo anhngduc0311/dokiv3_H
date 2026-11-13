@@ -48,7 +48,7 @@ export function createToken(user: { id: string; name: string; role: string; pass
     {
       issuer: 'truyendex-local',
       audience: 'truyendex-web',
-      expiresIn: '7d'
+      expiresIn: '90d'
     }
   );
 }
