@@ -665,9 +665,10 @@ function ReaderContent({ initialData }: { initialData: ReaderData | null }) {
                     move(-1);
                   }}
                   title="Chương trước (Phím ←)"
+                  aria-label="Chương trước"
                 >
                   <Icon name="arrowLeft" style={{ width: 14, height: 14 }} />
-                  <span>Trước</span>
+                  <span className="chapter-nav-label">Trước</span>
                 </button>
 
                 <div className="chap-select-wrap">
@@ -697,8 +698,9 @@ function ReaderContent({ initialData }: { initialData: ReaderData | null }) {
                     move(1);
                   }}
                   title="Chương sau (Phím →)"
+                  aria-label="Chương sau"
                 >
-                  <span>Sau</span>
+                  <span className="chapter-nav-label">Sau</span>
                   <Icon name="arrowRight" style={{ width: 14, height: 14 }} />
                 </button>
               </div>

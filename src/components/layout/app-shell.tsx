@@ -12,6 +12,8 @@ import { useStore } from '../../contexts/store-context';
 import { api } from '../../lib/api';
 import { Icon } from '../ui/icon';
 
+const genreCollator = new Intl.Collator('vi', { sensitivity: 'base' });
+
 export function AppShell({ children }: { children: React.ReactNode }) {
   const store = useStore();
   const pathname = usePathname();
@@ -31,7 +33,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     if (next && tags.length === 0) {
       try {
         const res = await api.request<{ id: string; name: string }[]>('/catalog/tags');
-        setTags(res || []);
+        setTags([...(res ?? [])].sort((a, b) => genreCollator.compare(a.name, b.name)));
       } catch {
         store.notify('Không tải được thể loại. Vui lòng thử lại.');
       }

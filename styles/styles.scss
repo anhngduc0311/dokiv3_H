@@ -4238,6 +4238,12 @@ small {
     height: 36px;
     border: 1px solid rgba(255, 255, 255, 0.1);
 
+    &:disabled {
+      background: rgba(255, 255, 255, 0.04);
+      color: #a1a1aa;
+      opacity: 1;
+    }
+
     &:hover:not([disabled]) {
       background: var(--accent);
       color: #000;
@@ -5586,8 +5592,8 @@ small {
       justify-content: center;
       min-width: 0;
 
-      .btn-nav-chap span {
-        display: none !important;
+      .chapter-nav-label {
+        display: none;
       }
 
       .btn-nav-chap {
@@ -5947,9 +5953,8 @@ small {
     gap: 4px;
 
     .reader-nav-controls {
-      .chap-select-wrap select {
+      .chap-select-wrap {
         max-width: 95px;
-        padding-right: 16px;
       }
     }
 
