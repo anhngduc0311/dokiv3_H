@@ -382,6 +382,34 @@ test('listing pagination emits crawlable anchors preserving filters', () => {
   assert.match(html, /href="\/tim-truyen-nang-cao\?genre=12" rel="prev"/);
 });
 
+test('home pagination updates only the list while keeping real URLs for other navigation', () => {
+  const load = loader({
+    'next/navigation': { usePathname: () => '/', useSearchParams: () => new URLSearchParams('page=2') },
+  });
+  const { Pagination } = load('src/components/ui/pagination.tsx');
+  const links = [];
+  const visit = node => {
+    if (Array.isArray(node)) return node.forEach(visit);
+    if (!node?.props) return;
+    if (node.props.href) links.push(node.props);
+    visit(node.props.children);
+  };
+  const changed = [];
+  visit(Pagination({ page: 2, total: 300, size: 30, clientOnly: true, change: n => changed.push(n) }));
+  const next = links.find(link => link.rel === 'next');
+  assert.equal(next.href, '/?page=3');
+  let prevented = false;
+  next.onNavigate({ preventDefault() { prevented = true; } });
+  assert.equal(prevented, true);
+  assert.deepEqual(changed, [3]);
+  links.find(link => link.rel === 'prev').onNavigate({ preventDefault() {} });
+  links.find(link => link.href === '/?page=10').onNavigate({ preventDefault() {} });
+  assert.deepEqual(changed, [3, 1, 10]);
+  links.length = 0;
+  visit(Pagination({ page: 2, total: 300, size: 30, change() { assert.fail('normal links should navigate normally'); } }));
+  assert.equal(links.find(link => link.rel === 'next').onNavigate, undefined);
+});
+
 test('chapter aliases redirect permanently to the resolved ID', async () => {
   const load = loader({
     'next/navigation': { notFound: () => { throw new Error('404'); }, permanentRedirect: url => { throw new Error(`308:${url}`); } },

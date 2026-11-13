@@ -57,6 +57,7 @@ function HomeContent({ initialCatalog }: { initialCatalog: Page<Manga> }) {
   const descriptionRequestsRef = useRef(new Set<string>());
   const selectionEpochRef = useRef(0);
   const epochRef = useRef(0);
+  const secondaryListsStartedRef = useRef(false);
   const autoSlideTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Sync page state from searchParams
@@ -264,7 +265,8 @@ function HomeContent({ initialCatalog }: { initialCatalog: Page<Manga> }) {
     const n = ++epochRef.current;
     setError('');
 
-    const cached = api.getCached<Page<Manga>>(path);
+    const cached = api.getCached<Page<Manga>>(path) ||
+      (p === initialCatalog.page && initialCatalog.items.length > 0 ? initialCatalog : undefined);
     if (cached && cached.items.length > 0) {
       setItems(cached.items);
       if (p === 1) setLatestSpotlights(cached.items);
@@ -337,13 +339,14 @@ function HomeContent({ initialCatalog }: { initialCatalog: Page<Manga> }) {
   useEffect(() => {
     // SSR can return an empty catalog when the hosting server cannot reach the
     // upstream. ApiClient also tries the browser fallback, so do not skip it.
-    if (page !== initialCatalog.page || initialCatalog.items.length === 0) void loadMain(page);
+    void loadMain(page);
   }, [page]);
 
   useEffect(() => {
     // Give the main catalog and visible covers bandwidth before secondary lists.
-    if (loading) return;
+    if (loading || secondaryListsStartedRef.current) return;
     const timer = setTimeout(() => {
+      secondaryListsStartedRef.current = true;
       void loadFeatured();
       void loadTrending();
     }, 300);
@@ -351,8 +354,12 @@ function HomeContent({ initialCatalog }: { initialCatalog: Page<Manga> }) {
   }, [loading]);
 
   const goPage = (p: number) => {
+    if (p === page || p < 1 || p > Math.max(1, Math.ceil(total / 30))) return;
     prefetchPage(p);
-    router.push(`/?page=${p}`);
+    const query = new URLSearchParams(searchParams.toString());
+    if (p === 1) query.delete('page'); else query.set('page', String(p));
+    window.history.pushState(null, '', `/${query.size ? `?${query}` : ''}`);
+    setPage(p);
     const section = document.querySelector('.main-content-section');
     const targetY = section ? window.scrollY + section.getBoundingClientRect().top - 96 : 0;
     window.scrollTo({ top: Math.max(0, targetY), behavior: 'smooth' });
@@ -512,8 +519,8 @@ function HomeContent({ initialCatalog }: { initialCatalog: Page<Manga> }) {
             </div>
           )}
 
-          <div className="manga-grid">
-            {loading ? (
+          <div className="manga-grid" aria-busy={loading}>
+            {loading && !items.length ? (
               Array.from({ length: 12 }, (_, i) => (
                 <div key={i} className="skeleton skeleton-card"></div>
               ))
@@ -522,8 +529,9 @@ function HomeContent({ initialCatalog }: { initialCatalog: Page<Manga> }) {
             )}
           </div>
 
-          {!loading && !error && (
+          {!error && (
             <Pagination
+              clientOnly
               page={page}
               total={total}
               size={30}
