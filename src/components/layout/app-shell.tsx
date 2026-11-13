@@ -21,16 +21,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [genresOpen, setGenresOpen] = useState(false);
+  const [drawerGenresOpen, setDrawerGenresOpen] = useState(false);
   const [tags, setTags] = useState<{ id: string; name: string }[]>([]);
 
   const isReader = pathname.startsWith('/chuong/');
   const isAdmin = pathname.startsWith('/admin');
 
-  // Load genres tags when opened or needed
-  const toggleGenres = async () => {
-    const next = !genresOpen;
-    setGenresOpen(next);
-    if (next && tags.length === 0) {
+  // Share the genre data, while keeping the two menus independent.
+  const loadGenres = async () => {
+    if (tags.length === 0) {
       try {
         const res = await api.request<{ id: string; name: string }[]>('/catalog/tags');
         setTags([...(res ?? [])].sort((a, b) => genreCollator.compare(a.name, b.name)));
@@ -40,11 +39,32 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const toggleGenres = () => {
+    setGenresOpen(!genresOpen);
+    if (!genresOpen) void loadGenres();
+  };
+
+  const toggleDrawerGenres = () => {
+    setDrawerGenresOpen(!drawerGenresOpen);
+    if (!drawerGenresOpen) void loadGenres();
+  };
+
+  const openMobileMenu = () => {
+    setGenresOpen(false);
+    setMobileMenuOpen(true);
+  };
+
+  const closeMobileMenu = () => {
+    setMobileMenuOpen(false);
+    setDrawerGenresOpen(false);
+  };
+
   // Close menus on path changes
   useEffect(() => {
     setMobileMenuOpen(false);
     setMobileSearchOpen(false);
     setGenresOpen(false);
+    setDrawerGenresOpen(false);
 
     // Scroll restoration behavior like Angular app
     if (typeof window !== 'undefined') {
@@ -64,6 +84,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         setMobileMenuOpen(false);
         setMobileSearchOpen(false);
         setGenresOpen(false);
+        setDrawerGenresOpen(false);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -91,7 +112,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <>
       {!isReader && (
         <Header
-          onOpenMobileMenu={() => setMobileMenuOpen(true)}
+          onOpenMobileMenu={openMobileMenu}
           onOpenMobileSearch={() => setMobileSearchOpen(true)}
           genresOpen={genresOpen}
           onToggleGenres={toggleGenres}
@@ -107,9 +128,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           />
           <MobileDrawer
             isOpen={mobileMenuOpen}
-            onClose={() => setMobileMenuOpen(false)}
-            genresOpen={genresOpen}
-            onToggleGenres={toggleGenres}
+            onClose={closeMobileMenu}
+            genresOpen={drawerGenresOpen}
+            onToggleGenres={toggleDrawerGenres}
             tags={tags}
           />
         </>
@@ -129,7 +150,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {!isReader && (
         <>
           <Footer />
-          <BottomDock onOpenMobileMenu={() => setMobileMenuOpen(true)} />
+          <BottomDock onOpenMobileMenu={openMobileMenu} />
         </>
       )}
 

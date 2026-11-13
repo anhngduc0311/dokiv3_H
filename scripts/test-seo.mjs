@@ -703,3 +703,95 @@ test('catalog forwards every supported sort for browse, keyword, author and genr
     }
   } finally { globalThis.fetch = originalFetch; }
 });
+
+test('reader auto-scroll moves immediately with smooth CSS and stops without waiting for a render', () => {
+  const names = ['window', 'document', 'localStorage', 'requestAnimationFrame', 'cancelAnimationFrame'];
+  const saved = new Map(names.map(name => [name, Object.getOwnPropertyDescriptor(globalThis, name)]));
+  const frames = new Map();
+  let frameId = 0;
+  const moves = [];
+  const notices = [];
+  const root = { scrollHeight: 3000 };
+  try {
+    Object.assign(globalThis, {
+      window: { innerHeight: 600, scrollY: 0, scrollBy(options) {
+        moves.push(options);
+        // Model browsers where every smooth scroll restarts before advancing.
+        if (options.behavior === 'instant') this.scrollY += options.top;
+      } },
+      document: { scrollingElement: root, documentElement: { scrollHeight: 600 } },
+      localStorage: { getItem: () => null },
+      requestAnimationFrame: callback => { frames.set(++frameId, callback); return frameId; },
+      cancelAnimationFrame: id => frames.delete(id),
+    });
+    const React = require('react');
+    const load = loader({
+      react: { ...React, useState: initial => [typeof initial === 'function' ? initial() : initial, () => {}],
+        useRef: value => ({ current: value }), useEffect() {} },
+      'next/navigation': { useParams: () => ({ id: 'test-chapter' }), useRouter: () => ({ push() {} }) },
+      '../../../contexts/store-context': { useStore: () => ({ settings: { width: 900 }, notify: message => notices.push(message) }) },
+      '../../../lib/utils': { message: String, proxyImage: url => url },
+      '../../../lib/api': { api: {} },
+    });
+    const Reader = load('src/app/chuong/[id]/reader-client.tsx').default;
+    const wrapper = Reader({ initialData: { manga: { id: 'test', title: 'Test' }, chapter: { id: 'test-chapter', title: 'Test' },
+      navigation: [{ id: 'test-chapter', title: 'Test' }], pages: ['/test.svg'], dataSaverPages: [] } });
+    const content = wrapper.props.children;
+    const tree = content.type(content.props);
+    function findToggle(node) {
+      if (!node || typeof node !== 'object') return null;
+      if (node.props?.className?.includes('btn-as-action')) return node;
+      for (const child of React.Children.toArray(node.props?.children)) {
+        const match = findToggle(child);
+        if (match) return match;
+      }
+      return null;
+    }
+    const toggle = findToggle(tree).props.onClick;
+    const tick = now => { const [id, callback] = frames.entries().next().value; frames.delete(id); callback(now); };
+    let now = performance.now();
+    toggle();
+    for (let i = 0; i < 60; i++) tick(now += 16);
+    assert.ok(window.scrollY >= 70, 'must advance before a React re-render');
+    assert.ok(moves.every(move => move.behavior === 'instant'));
+    toggle();
+    assert.equal(frames.size, 0, 'a second tap must cancel the animation immediately');
+    assert.equal(notices.length, 0, 'use scrollingElement height rather than prematurely stopping');
+    toggle();
+    window.scrollY = 2399;
+    tick(now += 16);
+    assert.equal(frames.size, 0, 'stop at the end');
+    assert.equal(notices.length, 1);
+  } finally {
+    for (const [name, descriptor] of saved) {
+      if (descriptor) Object.defineProperty(globalThis, name, descriptor);
+      else delete globalThis[name];
+    }
+  }
+});
+
+test('filtered catalog recovers the page-one count when pages 2 and 3 report zero', async () => {
+  const originalFetch = globalThis.fetch;
+  const cached = new Map();
+  const calls = [];
+  globalThis.fetch = async url => {
+    const query = new URL(url).searchParams;
+    const page = Number(query.get('page'));
+    calls.push(page);
+    return Response.json({ items: Array.from({ length: 24 }, (_, i) => ({ id: page * 100 + i, title: 'Test' })),
+      page, page_size: 24, total_items: page === 1 ? 4912 : 0, total_pages: page === 1 ? 205 : 1 });
+  };
+  try {
+    const load = loader({ './redis': { cacheGet: async key => cached.get(key), cacheSet: async (key, value) => cached.set(key, value) } });
+    const { getMimiCatalog } = load('src/lib/mimi-catalog.ts');
+    // Directly opening page 2 must work even when page 1 was never visited.
+    for (const page of [2, 3]) {
+      const result = await getMimiCatalog({ q: 'Test', page, pageSize: 24 });
+      assert.equal(result.total, 4912);
+      assert.equal(Math.ceil(result.total / result.pageSize), 205);
+      assert.equal(result.page, page);
+      assert.equal(result.items[0].id, String(page * 100));
+    }
+    assert.deepEqual(calls, [2, 1, 3], 'reuse the cached count rather than fetching page one repeatedly');
+  } finally { globalThis.fetch = originalFetch; }
+});

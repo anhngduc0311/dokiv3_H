@@ -160,7 +160,7 @@ export async function searchCatalog(params: CatalogFilters): Promise<CatalogPage
     pageSize
   };
 
-  const cacheKey = 'catalog:browse:mimi:v2:' + JSON.stringify(filters);
+  const cacheKey = 'catalog:browse:mimi:v3:' + JSON.stringify(filters);
   const cached = await cacheGet<CatalogPage>(cacheKey);
   if (cached) return cached;
 

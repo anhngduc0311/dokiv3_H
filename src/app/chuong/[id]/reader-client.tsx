@@ -154,6 +154,7 @@ function ReaderContent({ initialData }: { initialData: ReaderData | null }) {
   };
 
   const stopAutoScroll = () => {
+    isAutoScrollingRef.current = false;
     setIsAutoScrolling(false);
     if (autoScrollAnimFrameRef.current !== null) {
       cancelAnimationFrame(autoScrollAnimFrameRef.current);
@@ -163,6 +164,7 @@ function ReaderContent({ initialData }: { initialData: ReaderData | null }) {
 
   const startAutoScroll = () => {
     if (isAutoScrollingRef.current) return;
+    isAutoScrollingRef.current = true;
     setIsAutoScrolling(true);
     scrollSubpixelRef.current = 0;
     lastFrameTimeRef.current = performance.now();
@@ -180,12 +182,15 @@ function ReaderContent({ initialData }: { initialData: ReaderData | null }) {
 
         const intPixels = Math.floor(scrollSubpixelRef.current);
         if (intPixels > 0) {
-          window.scrollBy(0, intPixels);
+          // Repeated smooth scrolls restart the animation before it moves on
+          // mobile. The animation frame loop already controls smooth motion.
+          window.scrollBy({ top: intPixels, left: 0, behavior: 'instant' });
           scrollSubpixelRef.current -= intPixels;
         }
       }
 
-      const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+      const scrollRoot = document.scrollingElement || document.documentElement;
+      const maxScroll = Math.max(0, scrollRoot.scrollHeight - window.innerHeight);
       if (window.scrollY >= maxScroll - 5) {
         stopAutoScroll();
         store.notify('Đã cuộn đến cuối chương truyện.');
@@ -199,7 +204,7 @@ function ReaderContent({ initialData }: { initialData: ReaderData | null }) {
   };
 
   const toggleAutoScroll = () => {
-    if (isAutoScrolling) {
+    if (isAutoScrollingRef.current) {
       stopAutoScroll();
     } else {
       startAutoScroll();
@@ -803,6 +808,7 @@ function ReaderContent({ initialData }: { initialData: ReaderData | null }) {
                       type="button"
                       className={`tool-btn btn-as-action ${isAutoScrolling ? 'active' : ''}`}
                       onClick={toggleAutoScroll}
+                      aria-pressed={isAutoScrolling}
                       title={
                         isAutoScrolling
                           ? 'Tạm dừng tự cuộn (Phím Space)'

@@ -173,7 +173,7 @@ export async function getMimiCatalog(filters: MimiCatalogFilters): Promise<Catal
   const genre = filters.genre?.trim() || '';
   const sort = filters.sort?.trim() || '';
 
-  const cacheKey = `mimi:catalog:v2:${JSON.stringify({ q, author, genre, sort, page, pageSize })}`;
+  const cacheKey = `mimi:catalog:v3:${JSON.stringify({ q, author, genre, sort, page, pageSize })}`;
   const cached = await cacheGet<CatalogPage>(cacheKey);
   if (cached) return cached;
 
@@ -221,9 +221,16 @@ export async function getMimiCatalog(filters: MimiCatalogFilters): Promise<Catal
   }
 
   const items = res.items.map(mapMimiManga).filter(Boolean);
+  // Search endpoints omit their count on subsequent pages (returning 0 and
+  // total_pages=1 even with a full page of results). Page one owns the count.
+  let total = Number(res.total_items) || 0;
+  if (page > 1 && total === 0) {
+    const firstPage = await getMimiCatalog({ ...filters, page: 1, pageSize });
+    total = firstPage.total;
+  }
   const result: CatalogPage = {
     items,
-    total: res.total_items ?? items.length,
+    total,
     page: res.page || page,
     pageSize: res.page_size || pageSize
   };

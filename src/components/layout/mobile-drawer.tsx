@@ -101,7 +101,7 @@ export function MobileDrawer({
         {/* Drawer Links List */}
         <nav className="drawer-nav">
           <div className="nav-section-label">THỂ LOẠI & ĐỐI TƯỢNG</div>
-          <button type="button" className="drawer-genre-toggle" onClick={onToggleGenres}>
+          <button type="button" className="drawer-genre-toggle" onClick={onToggleGenres} aria-expanded={genresOpen}>
             <span className="genre-toggle-left">
               <Icon name="tag" /> <span>Thể loại truyện {tags.length > 0 ? `(${tags.length})` : ''}</span>
             </span>
