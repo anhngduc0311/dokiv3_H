@@ -410,6 +410,64 @@ test('home pagination updates only the list while keeping real URLs for other na
   assert.equal(links.find(link => link.rel === 'next').onNavigate, undefined);
 });
 
+test('Google OAuth uses the public HTTPS origin behind Cloudflare and rejects foreign hosts', async () => {
+  const load = loader();
+  const { googleAuthOrigin, safeReturnUrl } = load('src/lib/auth-urls.ts');
+  const request = new Request('http://localhost:3000/api/auth/google/login?returnUrl=%2Ftheo-doi', {
+    headers: { host: 'www.dokihentai.com', 'x-forwarded-proto': 'http' },
+  });
+  assert.equal(googleAuthOrigin(request), 'https://www.dokihentai.com');
+  assert.equal(googleAuthOrigin(new Request('http://attacker.invalid/', { headers: { 'x-forwarded-host': 'attacker.invalid' } })), 'https://www.dokihentai.com');
+  assert.equal(safeReturnUrl('/tim-truyen-nang-cao?q=test%20name'), '/tim-truyen-nang-cao?q=test%20name');
+  for (const target of ['https://attacker.invalid', '//attacker.invalid', '/\\attacker.invalid', '/\n/attacker.invalid']) {
+    assert.equal(safeReturnUrl(target), '/');
+  }
+  const response = await load('src/app/api/auth/google/login/route.ts').GET(request);
+  const authorization = new URL(response.headers.get('location'));
+  assert.equal(authorization.searchParams.get('redirect_uri'), 'https://www.dokihentai.com/api/auth/google/callback');
+});
+
+test('Google callback uses the same HTTPS URI and preserves an existing password version', async () => {
+  const originalFetch = globalThis.fetch;
+  let session;
+  const load = loader({
+    '@/lib/db': { ensureDbInitialized: async () => {}, sql: async () => [{ Id: 'user', Email: 'reader@example.com', PasswordVersion: 5, PasswordHash: 'hash' }] },
+    '@/lib/auth': { createSession: user => { session = user; return { token: 'test-token' }; } },
+  });
+  try {
+    globalThis.fetch = async (url, options) => {
+      if (url === 'https://oauth2.googleapis.com/token') {
+        assert.equal(options.body.get('redirect_uri'), 'https://www.dokihentai.com/api/auth/google/callback');
+        return Response.json({ access_token: 'google-token' });
+      }
+      return Response.json({ email: 'reader@example.com', email_verified: true, name: 'Reader' });
+    };
+    const response = await load('src/app/api/auth/google/callback/route.ts').GET(new Request('http://localhost:3000/api/auth/google/callback?code=test&state=%2Ftheo-doi', {
+      headers: { host: 'www.dokihentai.com', 'x-forwarded-proto': 'http' },
+    }));
+    const location = new URL(response.headers.get('location'));
+    assert.equal(location.origin, 'https://www.dokihentai.com');
+    assert.equal(location.searchParams.get('returnUrl'), '/theo-doi');
+    assert.equal(location.searchParams.get('token'), 'test-token');
+    assert.equal(session.passwordVersion, 5);
+  } finally { globalThis.fetch = originalFetch; }
+});
+
+test('Google sign-in rejects ID tokens issued for another application', async () => {
+  const originalFetch = globalThis.fetch;
+  const load = loader({
+    '@/lib/db': { ensureDbInitialized: async () => {}, sql: async () => { assert.fail('an invalid Google audience must never reach users'); } },
+    '@/lib/auth': { createSession: () => { assert.fail('must not issue a session'); } },
+  });
+  try {
+    globalThis.fetch = async () => Response.json({ aud: 'other-client', email: 'reader@example.com', email_verified: 'true' });
+    const response = await load('src/app/api/auth/google/route.ts').POST(new Request('https://www.dokihentai.com/api/auth/google', {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ credential: 'wrong-audience' }),
+    }));
+    assert.equal(response.status, 400);
+  } finally { globalThis.fetch = originalFetch; }
+});
+
 test('chapter aliases redirect permanently to the resolved ID', async () => {
   const load = loader({
     'next/navigation': { notFound: () => { throw new Error('404'); }, permanentRedirect: url => { throw new Error(`308:${url}`); } },

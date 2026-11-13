@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { sql, ensureDbInitialized } from '@/lib/db';
 import { createSession } from '@/lib/auth';
 import { v4 as uuidv4 } from 'uuid';
+import { googleAuthOrigin, safeReturnUrl } from '@/lib/auth-urls';
 
 const GOOGLE_CLIENT_ID =
   process.env.GOOGLE_CLIENT_ID ||
@@ -16,12 +17,11 @@ export async function GET(req: Request) {
   const state = searchParams.get('state');
   const error = searchParams.get('error');
 
-  const host = req.headers.get('x-forwarded-host') || req.headers.get('host') || 'localhost:3000';
-  const proto = req.headers.get('x-forwarded-proto') || 'http';
-  const redirectUri = `${proto}://${host}/api/auth/google/callback`;
+  const origin = googleAuthOrigin(req);
+  const redirectUri = `${origin}/api/auth/google/callback`;
 
   if (error || !code) {
-    return NextResponse.redirect(`${proto}://${host}/dang-nhap?error=${encodeURIComponent(error || 'Đăng nhập Google thất bại')}`);
+    return NextResponse.redirect(`${origin}/dang-nhap?error=${encodeURIComponent(error || 'Đăng nhập Google thất bại')}`);
   }
 
   try {
@@ -39,7 +39,7 @@ export async function GET(req: Request) {
     });
 
     if (!tokenRes.ok) {
-      return NextResponse.redirect(`${proto}://${host}/dang-nhap?error=${encodeURIComponent('Không thể xác thực mã từ Google')}`);
+      return NextResponse.redirect(`${origin}/dang-nhap?error=${encodeURIComponent('Không thể xác thực mã từ Google')}`);
     }
 
     const tokenData = await tokenRes.json();
@@ -53,13 +53,13 @@ export async function GET(req: Request) {
       });
       if (userRes.ok) {
         const userInfo = await userRes.json();
-        email = userInfo.email;
+        if (userInfo.email_verified === true) email = userInfo.email;
         name = userInfo.name || '';
       }
     }
 
     if (!email) {
-      return NextResponse.redirect(`${proto}://${host}/dang-nhap?error=${encodeURIComponent('Không lấy được email từ Google')}`);
+      return NextResponse.redirect(`${origin}/dang-nhap?error=${encodeURIComponent('Không lấy được email đã xác minh từ Google')}`);
     }
 
     email = email.trim().toLowerCase();
@@ -85,20 +85,25 @@ export async function GET(req: Request) {
       };
     }
 
+    if (user.IsBanned) {
+      return NextResponse.redirect(`${origin}/dang-nhap?error=${encodeURIComponent('Tài khoản của bạn đã bị tạm khóa.')}`);
+    }
+
     const session = createSession({
       id: user.Id,
       email: user.Email,
       name: user.Name,
       role: user.Role,
       coins: Number(user.Coins || 0),
-      passwordHash: user.PasswordHash
+      passwordHash: user.PasswordHash,
+      passwordVersion: Number(user.PasswordVersion || 0)
     });
 
-    const targetUrl = state ? decodeURIComponent(state) : '/';
+    const targetUrl = safeReturnUrl(state);
     return NextResponse.redirect(
-      `${proto}://${host}/dang-nhap?token=${encodeURIComponent(session.token)}&returnUrl=${encodeURIComponent(targetUrl)}`
+      `${origin}/dang-nhap?token=${encodeURIComponent(session.token)}&returnUrl=${encodeURIComponent(targetUrl)}`
     );
   } catch (err: any) {
-    return NextResponse.redirect(`${proto}://${host}/dang-nhap?error=${encodeURIComponent(err.message || 'Lỗi xử lý')}`);
+    return NextResponse.redirect(`${origin}/dang-nhap?error=${encodeURIComponent('Không thể hoàn tất đăng nhập Google. Vui lòng thử lại.')}`);
   }
 }

@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useStore } from '../../contexts/store-context';
 import { setStoredToken, message } from '../../lib/utils';
 import { Icon } from '../ui/icon';
+import { safeReturnUrl } from '../../lib/auth-urls';
 
 export interface AuthViewProps {
   isRegister?: boolean;
@@ -25,7 +26,7 @@ export function AuthView({ isRegister = false }: AuthViewProps) {
   const [confirm, setConfirm] = useState('');
   const [googleClientId, setGoogleClientId] = useState('');
 
-  const returnUrl = searchParams.get('returnUrl') || '/';
+  const returnUrl = safeReturnUrl(searchParams.get('returnUrl'));
 
   // Load Google config and handle URL query tokens
   useEffect(() => {
@@ -38,7 +39,8 @@ export function AuthView({ isRegister = false }: AuthViewProps) {
       setBusy(true);
       void store
         .restore()
-        .then(() => {
+        .then(user => {
+          if (!user) throw new Error('Phiên đăng nhập Google không hợp lệ. Vui lòng đăng nhập lại.');
           store.notify('Đăng nhập Google thành công!');
           router.push(returnUrl);
         })
@@ -69,9 +71,9 @@ export function AuthView({ isRegister = false }: AuthViewProps) {
 
     const renderBtn = () => {
       const el = document.getElementById('google-btn-container');
-      if (!el) return;
+      if (!el) return false;
       const w = window as any;
-      if (!w.google?.accounts?.id) return;
+      if (!w.google?.accounts?.id) return false;
 
       el.innerHTML = '';
       const parent = el.parentElement || el;
@@ -100,11 +102,15 @@ export function AuthView({ isRegister = false }: AuthViewProps) {
           locale: 'vi',
           width: targetWidth
         });
-      } catch {}
+        return true;
+      } catch { return false; }
     };
 
-    const timer = setTimeout(renderBtn, 100);
-    return () => clearTimeout(timer);
+    let attempts = 0;
+    const timer = setInterval(() => {
+      if (renderBtn() || ++attempts >= 50) clearInterval(timer);
+    }, 200);
+    return () => clearInterval(timer);
   }, [googleClientId, isRegister, store.settings.theme]);
 
   const handleGoogleCredential = async (credential: string) => {
@@ -128,28 +134,6 @@ export function AuthView({ isRegister = false }: AuthViewProps) {
   const loginWithGoogle = () => {
     setBusy(true);
     setError('');
-    const w = window as any;
-    if (googleClientId && w.google?.accounts?.id) {
-      try {
-        w.google.accounts.id.initialize({
-          client_id: googleClientId,
-          callback: (res: any) => {
-            if (res?.credential) {
-              void handleGoogleCredential(res.credential);
-            }
-          }
-        });
-        w.google.accounts.id.prompt((notification: any) => {
-          if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-            redirectToGoogleOAuth();
-          }
-        });
-        return;
-      } catch {
-        redirectToGoogleOAuth();
-        return;
-      }
-    }
     redirectToGoogleOAuth();
   };
 

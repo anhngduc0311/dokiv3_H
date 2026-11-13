@@ -29,7 +29,7 @@ export async function POST(req: Request) {
         );
         if (verifyRes.ok) {
           const info = await verifyRes.json();
-          if (info.aud === GOOGLE_CLIENT_ID || info.email) {
+          if (info.aud === GOOGLE_CLIENT_ID && (info.email_verified === true || info.email_verified === 'true')) {
             email = info.email;
             name = info.name || '';
           }
@@ -59,7 +59,7 @@ export async function POST(req: Request) {
             });
             if (userRes.ok) {
               const userInfo = await userRes.json();
-              email = userInfo.email;
+              if (userInfo.email_verified === true) email = userInfo.email;
               name = userInfo.name || '';
             }
           }
@@ -116,7 +116,8 @@ export async function POST(req: Request) {
       role: user.Role,
       coins: Number(user.Coins || 0),
       isBanned: user.IsBanned,
-      passwordHash: user.PasswordHash
+      passwordHash: user.PasswordHash,
+      passwordVersion: Number(user.PasswordVersion || 0)
     });
 
     return NextResponse.json(session);
