@@ -14,10 +14,10 @@ export function BrandLogo() {
       />
       <Image
         className="brand-artwork"
-        src="/dokihentai-wordmark.png"
+        src="/dokihentai-wordmark-transparent.png"
         alt="DokiHentai"
-        width={2168}
-        height={725}
+        width={2149}
+        height={732}
         sizes="(max-width: 480px) 126px, (max-width: 768px) 146px, 160px"
       />
     </>
