@@ -1,0 +1,10 @@
+[Unit]
+Description=Check GitHub main for DokiHentai updates
+
+[Timer]
+OnBootSec=1min
+OnUnitInactiveSec=1min
+AccuracySec=10s
+
+[Install]
+WantedBy=timers.target
