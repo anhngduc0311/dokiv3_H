@@ -43,7 +43,9 @@ const COUNTRIES: Record<string, string> = {
 
 const SCORES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
-function MangaDetailContent({ initialManga }: { initialManga: Manga | null }) {
+type MangaDetailProps = { initialManga: Manga | null; initialChaptersLoaded?: boolean };
+
+function MangaDetailContent({ initialManga, initialChaptersLoaded = false }: MangaDetailProps) {
   const params = useParams();
   const router = useRouter();
   const store = useStore();
@@ -261,7 +263,8 @@ function MangaDetailContent({ initialManga }: { initialManga: Manga | null }) {
 
     void Promise.allSettled([
       ...(initialManga?.id === id ? [] : [loadManga(n)]),
-      loadChapters(1, language, ascending),
+      // The server already loaded Vietnamese chapters in descending order.
+      ...(initialManga?.id === id && initialChaptersLoaded && language === 'vi' ? [] : [loadChapters(1, language, ascending)]),
       loadCommunity(),
       loadComments(1)
     ]);
@@ -1014,10 +1017,10 @@ function MangaDetailContent({ initialManga }: { initialManga: Manga | null }) {
   );
 }
 
-export default function MangaDetailPage({ initialManga }: { initialManga: Manga | null }) {
+export default function MangaDetailPage({ initialManga, initialChaptersLoaded }: MangaDetailProps) {
   return (
     <Suspense fallback={<div className="loading-panel"><div className="search-spinner"></div></div>}>
-      <MangaDetailContent initialManga={initialManga} />
+      <MangaDetailContent initialManga={initialManga} initialChaptersLoaded={initialChaptersLoaded} />
     </Suspense>
   );
 }

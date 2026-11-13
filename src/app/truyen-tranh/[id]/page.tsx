@@ -17,14 +17,16 @@ export async function generateMetadata({ params }: Props) {
 }
 export default async function MangaPage({ params }: Props) {
   const { id } = await params;
-  const result = await serverDataResult(() => loadManga(id));
+  const [result, chapterResult] = await Promise.all([
+    serverDataResult(() => loadManga(id)),
+    serverDataResult(() => loadChapters(id)),
+  ]);
   if (result.failed) return <MangaClient key={id} initialManga={null} />;
   const manga = result.data;
   if (!manga) notFound();
-  const chapterResult = await serverDataResult(() => loadChapters(id));
   const chapters = chapterResult.failed ? { items: manga.chapters, total: manga.totalChapters || manga.chapters.length } : chapterResult.data;
   return <>
     <JsonLd data={[mangaSchema(manga), breadcrumbs([{ name: 'Trang chủ', path: '/' }, { name: manga.title, path: mangaPath(id) }])]} />
-    <MangaClient key={id} initialManga={clientManga({ ...manga, chapters: chapters.items, totalChapters: chapters.total })} />
+    <MangaClient key={id} initialManga={clientManga({ ...manga, chapters: chapters.items, totalChapters: chapters.total })} initialChaptersLoaded={!chapterResult.failed} />
   </>;
 }

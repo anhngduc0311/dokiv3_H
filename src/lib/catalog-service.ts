@@ -207,7 +207,8 @@ export async function getMangaDetail(id: string): Promise<MangaCard | null> {
 
   // Check local database first for admin/custom manga
   try {
-    await ensureDbInitialized();
+    // Public reads use the existing schema; migrations and seeding belong to
+    // initialization/write paths, not the request that opens a story.
     const rows = await sql`
       SELECT m.*, (SELECT count(*)::int FROM "Chapters" c WHERE c."MangaId" = m."Id") as chapters_count
       FROM "Mangas" m WHERE m."Id" = ${id} LIMIT 1;
@@ -224,7 +225,6 @@ export async function getMangaDetail(id: string): Promise<MangaCard | null> {
   // Fetch from MimiHentai
   const manga = await getMimiDetail(id);
   if (manga) {
-    await rememberManga(manga);
     await cacheSet(cacheKey, manga, 300);
     return manga;
   }
@@ -239,7 +239,6 @@ export async function getMangaChapters(
   ascending: boolean = false,
   _language: string = 'vi'
 ): Promise<{ items: ChapterCard[]; total: number; page: number; pageSize: number }> {
-  await ensureDbInitialized();
   const empty = { items: [], total: 0, page: 1, pageSize: 1000 };
 
   // Try DB chapters for locally created mangas
@@ -293,8 +292,6 @@ export async function getMangaChapters(
 
 // 6. CHAPTER READER
 export async function getChapterReader(chapterId: string): Promise<ReaderData | null> {
-  await ensureDbInitialized();
-
   // Try DB chapter
   try {
     const chapRows = await sql`

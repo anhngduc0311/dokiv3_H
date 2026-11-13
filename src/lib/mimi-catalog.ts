@@ -245,26 +245,41 @@ export async function getMimiDetail(id: string): Promise<MangaCard | null> {
   const cached = await cacheGet<MangaCard>(cacheKey);
   if (cached) return cached;
 
-  const [rawManga, rawChapters] = await Promise.all([
+  const [rawManga, chapters] = await Promise.all([
     mimiFetch<any>(`/manga/${encodeURIComponent(id)}`, undefined, true),
-    mimiFetch<any[]>(`/manga/${encodeURIComponent(id)}/chapters`)
+    getMimiChapters(id)
   ]);
 
   if (!rawManga) return null;
 
   const manga = mapMimiManga(rawManga);
 
-  if (Array.isArray(rawChapters) && rawChapters.length > 0) {
-    manga.chapters = rawChapters.map(c => mapMimiChapter(c, id));
-    manga.chaptersCount = rawChapters.length;
-    manga.totalChapters = rawChapters.length;
+  if (chapters.items.length > 0) {
+    manga.chapters = chapters.items;
+    manga.chaptersCount = chapters.total;
+    manga.totalChapters = chapters.total;
   }
 
   await cacheSet(cacheKey, manga, 300);
   return manga;
 }
 
-export async function getMimiChapters(
+// Detail rendering and the chapter endpoint often request the same list at once.
+// Share the pending request as well as the completed cache entry.
+const pendingChapters = new Map<string, Promise<{ items: ChapterCard[]; total: number; page: number; pageSize: number }>>();
+
+export function getMimiChapters(mangaId: string, ascending = false) {
+  const key = JSON.stringify([mangaId, ascending]);
+  const pending = pendingChapters.get(key);
+  if (pending) return pending;
+  const request = fetchMimiChapters(mangaId, ascending).finally(() => {
+    pendingChapters.delete(key);
+  });
+  pendingChapters.set(key, request);
+  return request;
+}
+
+async function fetchMimiChapters(
   mangaId: string,
   ascending: boolean = false
 ): Promise<{ items: ChapterCard[]; total: number; page: number; pageSize: number }> {

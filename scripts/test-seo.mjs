@@ -36,6 +36,78 @@ function loader(overrides = {}) {
 const seo = loader()('src/lib/seo.ts');
 const manga = { id: 'id/&', title: 'Tên truyện', author: 'Tác giả', description: '<p>Mô tả &amp; nội dung</p>', cover: '/cover.png', genres: ['Fantasy'], updatedAt: '2026-10-01', chapters: [], source: 'mimihentai', rating: 9 };
 
+test('opening stories and chapters never runs migrations or writes remembered manga', async () => {
+  const load = loader({
+    './db': {
+      ensureDbInitialized: () => { assert.fail('reading must not initialize the database'); },
+      sql: async strings => {
+        assert.doesNotMatch(strings.join(''), /INSERT|UPDATE|CREATE|ALTER/);
+        return [];
+      },
+    },
+    './redis': { cacheGet: async () => null, cacheSet: async () => {} },
+    './mimi-catalog': {
+      getMimiDetail: async () => manga,
+      getMimiChapters: async () => ({ items: [], total: 0 }),
+      getMimiReader: async () => ({ manga, pages: [] }),
+    },
+  });
+  const catalog = load('src/lib/catalog-service.ts');
+  assert.equal((await catalog.getMangaDetail(manga.id)).id, manga.id);
+  assert.deepEqual((await catalog.getMangaChapters(manga.id)).items, []);
+  assert.equal((await catalog.getChapterReader('chapter')).manga.id, manga.id);
+});
+
+test('detail and chapter requests share one upstream chapter fetch', async () => {
+  const originalFetch = globalThis.fetch;
+  let release;
+  const ready = new Promise(resolve => { release = resolve; });
+  let chapterCalls = 0;
+  try {
+    globalThis.fetch = async url => {
+      if (url.endsWith('/chapters')) {
+        chapterCalls++;
+        await ready;
+        return Response.json([{ id: 88, order: 1, title: 'Chapter 1' }]);
+      }
+      return Response.json({ id: 70980, title: 'Story' });
+    };
+    const catalog = loader({ './redis': { cacheGet: async () => null, cacheSet: async () => {} } })('src/lib/mimi-catalog.ts');
+    const detail = catalog.getMimiDetail('70980');
+    const chapters = catalog.getMimiChapters('70980');
+    await new Promise(resolve => setImmediate(resolve));
+    release();
+    const [m, c] = await Promise.all([detail, chapters]);
+    assert.equal(chapterCalls, 1);
+    assert.deepEqual(m.chapters, c.items);
+    assert.equal(c.items[0].id, '88');
+  } finally {
+    release();
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('story page starts chapters before the detail response finishes', async () => {
+  let release;
+  const ready = new Promise(resolve => { release = resolve; });
+  let chapterStarted = false;
+  const load = loader({
+    './manga-client': () => null,
+    '@/lib/seo-data': {
+      loadManga: async () => { await ready; return manga; },
+      loadChapters: async () => { chapterStarted = true; return { items: [], total: 0 }; },
+      clientManga: value => value,
+    },
+  });
+  const pending = load('src/app/truyen-tranh/[id]/page.tsx').default({ params: Promise.resolve({ id: manga.id }) });
+  await new Promise(resolve => setImmediate(resolve));
+  const startedBeforeDetail = chapterStarted;
+  release();
+  const result = await pending;
+  assert.equal(startedBeforeDetail, true);
+  assert.equal(result.props.children[1].props.initialChaptersLoaded, true);
+});
+
 test('home reads sources concurrently without running database initialization', async () => {
   let releaseDb;
   const dbReady = new Promise(resolve => { releaseDb = resolve; });
