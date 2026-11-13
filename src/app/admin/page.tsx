@@ -30,6 +30,15 @@ export default function AdminPage() {
 
   // Loading states
   const [loading, setLoading] = useState(false);
+  const [mangaLoading, setMangaLoading] = useState(false);
+  const [chaptersLoading, setChaptersLoading] = useState(false);
+  const [taxonomyLoading, setTaxonomyLoading] = useState(false);
+  const [mangaLoadError, setMangaLoadError] = useState('');
+  const [chaptersLoadError, setChaptersLoadError] = useState('');
+  const [taxonomyLoadError, setTaxonomyLoadError] = useState('');
+  const mangaRequest = useRef(0);
+  const chaptersRequest = useRef(0);
+  const taxonomyRequest = useRef(0);
   const [actionLoading, setActionLoading] = useState(false);
   const [authorized, setAuthorized] = useState(false);
 
@@ -149,6 +158,7 @@ export default function AdminPage() {
 
   // Taxonomy state
   const [taxonomyType, setTaxonomyType] = useState<'genre' | 'tag' | 'author' | 'group'>('genre');
+  const taxonomyTypeRef = useRef(taxonomyType);
   const [taxonomyItems, setTaxonomyItems] = useState<AdminTaxonomy[]>([]);
   const [taxonomyModalOpen, setTaxonomyModalOpen] = useState(false);
   const [taxonomyEditMode, setTaxonomyEditMode] = useState(false);
@@ -236,10 +246,9 @@ export default function AdminPage() {
   const handleSwitchTab = (tab: 'overview' | 'mangas' | 'chapters' | 'taxonomy' | 'users' | 'moderation' | 'logs') => {
     setActiveTab(tab);
     if (tab === 'overview') void loadOverview();
-    else if (tab === 'mangas') void loadMangas(1, mangaQuery, mangaStatusFilter, mangaSourceFilter, mangaVisibilityFilter);
+    else if (tab === 'mangas') void loadMangas();
     else if (tab === 'chapters') {
       if (selectedMangaId) void loadChapters(selectedMangaId);
-      else void loadMangas(1, mangaQuery, mangaStatusFilter, mangaSourceFilter, mangaVisibilityFilter);
     }
     else if (tab === 'taxonomy') void loadTaxonomy(taxonomyType);
     else if (tab === 'users') void loadUsers(1, userQuery, userRoleFilter, userStatusFilter);
@@ -295,7 +304,9 @@ export default function AdminPage() {
     source = mangaSourceFilter,
     visibility = mangaVisibilityFilter
   ) => {
-    setLoading(true);
+    const request = ++mangaRequest.current;
+    setMangaLoading(true);
+    setMangaLoadError('');
     try {
       const res = await api.request<{ items: AdminManga[]; total: number }>(
         '/admin/mangas?' +
@@ -308,12 +319,13 @@ export default function AdminPage() {
             visibility
           })
       );
+      if (request !== mangaRequest.current) return;
       setMangas(res.items || []);
       setMangaTotal(res.total || 0);
     } catch (e: any) {
-      store.notify(e.message || 'Không tải được danh sách truyện.');
+      if (request === mangaRequest.current) setMangaLoadError(e.message || 'Không tải được danh sách truyện.');
     } finally {
-      setLoading(false);
+      if (request === mangaRequest.current) setMangaLoading(false);
     }
   };
 
@@ -464,20 +476,24 @@ export default function AdminPage() {
   // =========================================================================
   const loadChapters = async (mangaId: string) => {
     if (!mangaId) return;
-    setLoading(true);
+    const request = ++chaptersRequest.current;
+    setChaptersLoading(true);
+    setChaptersLoadError('');
+    setChapters([]);
     setChapterPage(1);
     setChapterSearchQuery('');
     try {
       const res = await api.request<AdminChapter[]>(`/admin/mangas/${mangaId}/chapters`);
+      if (request !== chaptersRequest.current) return;
       setChapters(res || []);
       if (!selectedManga || selectedManga.id !== mangaId) {
         const m = await api.request<any>('/admin/mangas/' + mangaId);
-        setSelectedManga(m);
+        if (request === chaptersRequest.current) setSelectedManga(m);
       }
     } catch (e: any) {
-      store.notify(e.message || 'Không tải được danh sách chương.');
+      if (request === chaptersRequest.current) setChaptersLoadError(e.message || 'Không tải được danh sách chương.');
     } finally {
-      setLoading(false);
+      if (request === chaptersRequest.current) setChaptersLoading(false);
     }
   };
 
@@ -949,16 +965,25 @@ export default function AdminPage() {
   // =========================================================================
   // 4. TAXONOMY MANAGEMENT
   // =========================================================================
-  const loadTaxonomy = async (type = taxonomyType) => {
-    setLoading(true);
+  const loadTaxonomy = async (type = taxonomyTypeRef.current) => {
+    const request = ++taxonomyRequest.current;
+    setTaxonomyLoading(true);
+    setTaxonomyLoadError('');
+    setTaxonomyItems([]);
     try {
       const items = await api.request<AdminTaxonomy[]>('/admin/taxonomy?type=' + type);
-      setTaxonomyItems(items || []);
+      if (request === taxonomyRequest.current) setTaxonomyItems(items || []);
     } catch (e: any) {
-      store.notify(e.message || 'Không tải được danh mục taxonomy.');
+      if (request === taxonomyRequest.current) setTaxonomyLoadError(e.message || 'Không tải được danh mục taxonomy.');
     } finally {
-      setLoading(false);
+      if (request === taxonomyRequest.current) setTaxonomyLoading(false);
     }
+  };
+
+  const switchTaxonomyType = (type: typeof taxonomyType) => {
+    taxonomyTypeRef.current = type;
+    setTaxonomyType(type);
+    void loadTaxonomy(type);
   };
 
   const openCreateTaxonomyModal = () => {
@@ -989,7 +1014,7 @@ export default function AdminPage() {
         store.notify('Đã thêm taxonomy mới.');
       }
       setTaxonomyModalOpen(false);
-      void loadTaxonomy(taxonomyType);
+      void loadTaxonomy();
     } catch (e: any) {
       store.notify(e.message || 'Lỗi khi lưu taxonomy.');
     } finally {
@@ -1002,7 +1027,7 @@ export default function AdminPage() {
     try {
       await api.request('/admin/taxonomy/' + t.id, 'DELETE');
       store.notify('Đã xóa taxonomy.');
-      void loadTaxonomy(taxonomyType);
+      void loadTaxonomy();
     } catch (e: any) {
       store.notify(e.message || 'Không thể xóa taxonomy.');
     }
@@ -1250,6 +1275,13 @@ export default function AdminPage() {
     );
   }
 
+  const hasMangaFilters = Boolean(mangaQuery.trim()) || [mangaStatusFilter, mangaSourceFilter, mangaVisibilityFilter].some(filter => filter !== 'all');
+  const mangaEmptyMessage = hasMangaFilters
+    ? 'Không tìm thấy truyện đã lưu phù hợp với bộ lọc.'
+    : 'Chưa có truyện nào được lưu. Chọn “Thêm truyện mới” để bắt đầu.';
+  const refreshing = loading || (activeTab === 'mangas' && mangaLoading)
+    || (activeTab === 'chapters' && chaptersLoading) || (activeTab === 'taxonomy' && taxonomyLoading);
+
   return (
     <div className="admin-page-root">
       <div className="admin-shell">
@@ -1271,7 +1303,7 @@ export default function AdminPage() {
               <Icon name="compass" /> <span>Xem Website</span>
             </Link>
             <button
-              className={`topbar-refresh-btn ${loading ? 'spinning' : ''}`}
+              className={`topbar-refresh-btn ${refreshing ? 'spinning' : ''}`}
               onClick={() => handleSwitchTab(activeTab)}
               title="Làm mới dữ liệu"
             >
@@ -1705,7 +1737,7 @@ export default function AdminPage() {
                   <div>
                     <h1 className="pane-title">Quản lý truyện tranh</h1>
                     <p className="pane-subtitle">
-                      Thêm mới, sửa đổi thông tin, điều chỉnh trạng thái và phân quyền nguồn truyện
+                      Quản lý truyện đã lưu trong hệ thống. Kho truyện từ nguồn ngoài được xem ở trang Khám phá.
                     </p>
                   </div>
                   <div className="pane-actions">
@@ -1796,7 +1828,7 @@ export default function AdminPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {mangas.map(m => (
+                      {!mangaLoading && !mangaLoadError && mangas.map(m => (
                         <tr key={m.id}>
                           <td className="manga-main-cell">
                             <img
@@ -1908,10 +1940,12 @@ export default function AdminPage() {
                           </td>
                         </tr>
                       ))}
-                      {!mangas.length && !loading && (
+                      {(mangaLoading || mangaLoadError || !mangas.length) && (
                         <tr>
                           <td colSpan={7} className="text-center py-6">
-                            <div className="empty-table">Không tìm thấy truyện nào phù hợp với bộ lọc.</div>
+                            <div className="empty-table" role="status">
+                              {mangaLoading ? 'Đang tải danh sách truyện…' : mangaLoadError || mangaEmptyMessage}
+                            </div>
                           </td>
                         </tr>
                       )}
@@ -1920,7 +1954,7 @@ export default function AdminPage() {
                 </div>
 
                 {/* Pagination */}
-                {mangaTotal > 15 && (
+                {!mangaLoading && !mangaLoadError && mangaTotal > 15 && (
                   <div className="pagination-bar">
                     <div className="pagination-info">
                       Hiển thị <strong>{(mangaPage - 1) * 15 + 1} – {Math.min(mangaTotal, mangaPage * 15)}</strong> /{' '}
@@ -2028,7 +2062,7 @@ export default function AdminPage() {
                     >
                       <Icon name="download" /> <span>Tải truyện theo chương</span>
                     </button>
-                    <button className="btn-primary" onClick={openCreateChapterModal} disabled={!selectedMangaId}>
+                    <button className="btn-primary" onClick={openCreateChapterModal} disabled={!selectedMangaId || chaptersLoading || !!chaptersLoadError}>
                       <Icon name="plus" /> <span>Thêm chương mới</span>
                     </button>
                   </div>
@@ -2052,12 +2086,15 @@ export default function AdminPage() {
                         <div className="sub-meta">
                           <span>Tác giả: {selectedManga.author || 'Chưa cập nhật'}</span>
                           <span className="dot-sep">•</span>
-                          <span>{chapters.length} chương đã xuất bản</span>
+                          <span>{chaptersLoading ? 'Đang tải chương…' : `${chapters.length} chương`}</span>
                         </div>
                       </div>
                       <button
                         className="btn-secondary"
                         onClick={() => {
+                          chaptersRequest.current++;
+                          setChaptersLoading(false);
+                          setChapters([]);
                           setSelectedMangaId('');
                           setSelectedManga(null);
                           handleSwitchTab('mangas');
@@ -2069,7 +2106,7 @@ export default function AdminPage() {
                   ) : (
                     <div className="no-manga-selected">
                       <Icon name="book" />
-                      <p>Vui lòng chọn một bộ truyện để quản lý danh sách chương.</p>
+                      <p>Chọn truyện đã lưu trong mục Quản lý truyện để xem và chỉnh sửa chương.</p>
                       <button className="btn-primary" onClick={() => handleSwitchTab('mangas')}>
                         Danh sách truyện
                       </button>
@@ -2194,13 +2231,13 @@ export default function AdminPage() {
                               </td>
                             </tr>
                           ))}
-                          {!getFilteredChaptersList().length && !loading && (
+                          {!getFilteredChaptersList().length && (
                             <tr>
                               <td colSpan={7} className="text-center py-6">
                                 <div className="empty-table">
-                                  {chapterSearchQuery
+                                  {chaptersLoading ? 'Đang tải danh sách chương…' : chaptersLoadError || (chapterSearchQuery
                                     ? 'Không tìm thấy chương nào phù hợp với từ khóa.'
-                                    : 'Bộ truyện này chưa có chương nào. Nhấn "+ Thêm chương mới" để bắt đầu!'}
+                                    : 'Bộ truyện này chưa có chương nào. Nhấn "+ Thêm chương mới" để bắt đầu!')}
                                 </div>
                               </td>
                             </tr>
@@ -2303,7 +2340,7 @@ export default function AdminPage() {
                   <div>
                     <h1 className="pane-title">Quản lý Phân loại & Taxonomy</h1>
                     <p className="pane-subtitle">
-                      Hệ thống Thể loại, Tags, Tác giả và Nhóm dịch (Scanlation Teams)
+                      Quản lý thể loại, tag, tác giả và nhóm dịch được lưu trong hệ thống.
                     </p>
                   </div>
                   <div className="pane-actions">
@@ -2317,37 +2354,25 @@ export default function AdminPage() {
                 <div className="sub-tabs-bar">
                   <button
                     className={`sub-tab-btn ${taxonomyType === 'genre' ? 'active' : ''}`}
-                    onClick={() => {
-                      setTaxonomyType('genre');
-                      void loadTaxonomy('genre');
-                    }}
+                    onClick={() => switchTaxonomyType('genre')}
                   >
                     <Icon name="tag" /> <span>Thể loại (Genres)</span>
                   </button>
                   <button
                     className={`sub-tab-btn ${taxonomyType === 'tag' ? 'active' : ''}`}
-                    onClick={() => {
-                      setTaxonomyType('tag');
-                      void loadTaxonomy('tag');
-                    }}
+                    onClick={() => switchTaxonomyType('tag')}
                   >
                     <Icon name="bookmark" /> <span>Tags</span>
                   </button>
                   <button
                     className={`sub-tab-btn ${taxonomyType === 'author' ? 'active' : ''}`}
-                    onClick={() => {
-                      setTaxonomyType('author');
-                      void loadTaxonomy('author');
-                    }}
+                    onClick={() => switchTaxonomyType('author')}
                   >
                     <Icon name="user" /> <span>Tác giả</span>
                   </button>
                   <button
                     className={`sub-tab-btn ${taxonomyType === 'group' ? 'active' : ''}`}
-                    onClick={() => {
-                      setTaxonomyType('group');
-                      void loadTaxonomy('group');
-                    }}
+                    onClick={() => switchTaxonomyType('group')}
                   >
                     <Icon name="shield" /> <span>Nhóm dịch (Scanlation)</span>
                   </button>
@@ -2382,8 +2407,10 @@ export default function AdminPage() {
                       <p className="tax-desc">{item.description || 'Chưa có mô tả cho phân loại này.'}</p>
                     </div>
                   ))}
-                  {!taxonomyItems.length && !loading && (
-                    <div className="empty-state-card glass-card">Chưa có mục nào trong danh mục này.</div>
+                  {!taxonomyItems.length && (
+                    <div className="empty-state-card glass-card" role="status">
+                      {taxonomyLoading ? 'Đang tải danh mục…' : taxonomyLoadError || 'Chưa có mục nào trong danh mục này.'}
+                    </div>
                   )}
                 </div>
               </div>
