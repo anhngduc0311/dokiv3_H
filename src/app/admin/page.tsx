@@ -1309,7 +1309,7 @@ export default function AdminPage() {
           </div>
 
           <div className="topbar-right">
-            <Link href="/" target="_blank" className="topbar-link-btn" title="Mở trang chủ người dùng">
+            <Link href="/" target="_blank" className="topbar-link-btn" title="Mở trang chủ người dùng" aria-label="Mở trang chủ người dùng">
               <Icon name="compass" /> <span>Xem Website</span>
             </Link>
             <button
@@ -1343,12 +1343,13 @@ export default function AdminPage() {
         <div className="admin-body">
           {/* SIDEBAR */}
           <aside className="admin-sidebar">
-            <nav className="sidebar-nav">
+            <nav className="sidebar-nav" aria-label="Điều hướng quản trị">
               <div className="nav-group-title">QUẢN TRỊ VIÊN</div>
 
               <button
                 className={`nav-item ${activeTab === 'overview' ? 'active' : ''}`}
                 onClick={() => handleSwitchTab('overview')}
+                title="Tổng quan"
               >
                 <Icon name="dashboard" />
                 <span>Tổng quan</span>
@@ -1357,6 +1358,7 @@ export default function AdminPage() {
               <button
                 className={`nav-item ${activeTab === 'mangas' ? 'active' : ''}`}
                 onClick={() => handleSwitchTab('mangas')}
+                title="Quản lý truyện"
               >
                 <Icon name="book" />
                 <span>Quản lý truyện</span>
@@ -1368,6 +1370,7 @@ export default function AdminPage() {
               <button
                 className={`nav-item ${activeTab === 'chapters' ? 'active' : ''}`}
                 onClick={() => handleSwitchTab('chapters')}
+                title="Quản lý chương"
               >
                 <Icon name="layers" />
                 <span>Quản lý chương</span>
@@ -1379,6 +1382,7 @@ export default function AdminPage() {
               <button
                 className={`nav-item ${activeTab === 'taxonomy' ? 'active' : ''}`}
                 onClick={() => handleSwitchTab('taxonomy')}
+                title="Phân loại & Taxonomy"
               >
                 <Icon name="tag" />
                 <span>Phân loại & Taxonomy</span>
@@ -1389,6 +1393,7 @@ export default function AdminPage() {
               <button
                 className={`nav-item ${activeTab === 'users' ? 'active' : ''}`}
                 onClick={() => handleSwitchTab('users')}
+                title="Thành viên & RBAC"
               >
                 <Icon name="users" />
                 <span>Thành viên & RBAC</span>
@@ -1400,6 +1405,7 @@ export default function AdminPage() {
               <button
                 className={`nav-item ${activeTab === 'moderation' ? 'active' : ''}`}
                 onClick={() => handleSwitchTab('moderation')}
+                title="Kiểm duyệt & Báo cáo"
               >
                 <Icon name="flag" />
                 <span>Kiểm duyệt & Báo cáo</span>
@@ -1411,6 +1417,7 @@ export default function AdminPage() {
               <button
                 className={`nav-item ${activeTab === 'logs' ? 'active' : ''}`}
                 onClick={() => handleSwitchTab('logs')}
+                title="Nhật ký hệ thống"
               >
                 <Icon name="alertCircle" />
                 <span>Nhật ký hệ thống</span>

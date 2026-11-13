@@ -166,6 +166,7 @@
 /* SIDEBAR */
 .admin-sidebar {
   width: 250px;
+  flex-shrink: 0;
   background: #0d1118;
   border-right: 1px solid rgba(255, 255, 255, 0.06);
   display: flex;
@@ -274,6 +275,7 @@
 /* MAIN CONTENT PANE */
 .admin-main {
   flex: 1;
+  min-width: 0;
   padding: 28px 36px;
   max-width: 1440px;
   overflow-x: hidden;
@@ -1531,10 +1533,26 @@
 
 /* RESPONSIVE */
 @media (max-width: 900px) {
+  .admin-topbar { padding: 0 16px; gap: 12px; }
+  .admin-tag { display: none; }
+  .topbar-left, .topbar-right { min-width: 0; }
+  .topbar-right { gap: 8px; }
+  .admin-profile-pill .admin-meta {
+    max-width: 120px;
+    .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  }
+  .topbar-link-btn {
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    justify-content: center;
+    flex-shrink: 0;
+    > span:not(.app-icon) { display: none; }
+  }
   .admin-sidebar {
     width: 68px;
     padding: 16px 6px;
-    .nav-group-title, .sidebar-footer, .nav-item span { display: none; }
+    .nav-group-title, .sidebar-footer, .nav-item > span:not(.app-icon) { display: none; }
     .nav-item { justify-content: center; padding: 12px; }
   }
   .admin-main {
@@ -1543,6 +1561,90 @@
   .form-row-2, .form-row-3, .settings-grid-2 {
     grid-template-columns: 1fr;
   }
+}
+
+@media (max-width: 600px) {
+  .admin-topbar { padding: 0 12px; gap: 8px; }
+  .admin-brand { font-size: 1rem; gap: 6px; white-space: nowrap; }
+  .topbar-right { gap: 6px; flex-shrink: 0; }
+  .topbar-link-btn, .topbar-refresh-btn { width: 40px; height: 44px; }
+  .admin-profile-pill {
+    gap: 4px;
+    padding: 2px 4px;
+    .admin-meta { display: none; }
+    .admin-avatar { flex-shrink: 0; }
+    .btn-logout { min-width: 36px; min-height: 40px; justify-content: center; }
+  }
+  .admin-body { display: block; }
+  .admin-sidebar {
+    width: 100%;
+    height: auto;
+    padding: 8px 12px;
+    border-right: 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    overflow-x: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #475569 transparent;
+    overscroll-behavior-x: contain;
+    z-index: 90;
+
+    .sidebar-nav { flex-direction: row; width: max-content; gap: 6px; }
+    .nav-item {
+      width: auto;
+      min-height: 44px;
+      padding: 10px 12px;
+      gap: 8px;
+      white-space: nowrap;
+      border: 1px solid transparent;
+      &.active { border-color: rgba(229, 9, 20, 0.4); }
+      > span:not(.app-icon):not(.nav-count):not(.nav-badge) { display: inline; }
+    }
+  }
+  .admin-main { width: 100%; padding: 20px 12px; }
+  .pane-title { font-size: 1.3rem; line-height: 1.3; }
+  .pane-subtitle { font-size: 0.82rem; line-height: 1.5; }
+  .pane-header { gap: 12px; margin-bottom: 20px; }
+  .pane-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .kpi-card { padding: 16px 12px; min-width: 0; }
+  .kpi-header {
+    gap: 6px;
+    .kpi-label { font-size: 0.65rem; letter-spacing: 0; }
+    .kpi-icon-wrap { width: 30px; height: 30px; flex-shrink: 0; }
+  }
+  .kpi-value { font-size: 1.75rem; overflow-wrap: anywhere; }
+  .kpi-meta { flex-wrap: wrap; gap: 4px 6px; font-size: 0.75rem; }
+  .kpi-meta .dot-sep { display: none; }
+  .charts-grid, .dashboard-columns { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .chart-card, .dash-box { padding: 16px 12px; min-width: 0; }
+  .chart-header { gap: 8px; flex-wrap: wrap; }
+  .filter-toolbar {
+    padding: 12px;
+    gap: 12px;
+    .search-input-wrap { min-width: 0; flex-basis: 100%; }
+    .filter-selects { width: 100%; }
+    .filter-selects select { min-width: 0; max-width: 100%; flex: 1; }
+  }
+  .data-table { min-width: 640px; }
+  .taxonomy-grid { grid-template-columns: minmax(0, 1fr); }
+  .keyword-add-bar {
+    flex-wrap: wrap;
+    padding: 12px;
+    .search-input-wrap { min-width: 0; flex-basis: 100%; }
+  }
+  .modal-backdrop { padding: 12px; }
+  .admin-modal {
+    max-height: 90dvh;
+    .modal-header, .modal-body { padding: 16px; }
+    .modal-header { gap: 12px; }
+    .modal-footer { flex-wrap: wrap; }
+    .form-group input, .form-group select, .form-group textarea { min-width: 0; font-size: 16px; }
+  }
+}
+
+@media (max-width: 359px) {
+  .admin-brand .brand-text { display: none; }
+  .kpi-grid { grid-template-columns: minmax(0, 1fr); }
 }
 
 /* =========================================================================
