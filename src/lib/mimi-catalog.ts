@@ -173,23 +173,18 @@ export async function getMimiCatalog(filters: MimiCatalogFilters): Promise<Catal
   const genre = filters.genre?.trim() || '';
   const sort = filters.sort?.trim() || '';
 
-  const cacheKey = `mimi:catalog:${JSON.stringify({ q, author, genre, sort, page, pageSize })}`;
+  const cacheKey = `mimi:catalog:v2:${JSON.stringify({ q, author, genre, sort, page, pageSize })}`;
   const cached = await cacheGet<CatalogPage>(cacheKey);
   if (cached) return cached;
 
   let endpoint = '';
 
-  // Determine sort parameter for MimiHentai
-  let mimiSort = '';
-  if (sort === 'views' || sort === 'hot' || sort === 'popular') {
-    mimiSort = 'views';
-  } else if (sort === 'follows') {
-    mimiSort = 'follows';
-  } else if (sort === 'likes' || sort === 'rating') {
-    mimiSort = 'likes';
-  } else if (sort === 'title') {
-    mimiSort = 'title';
-  }
+  // The source uses these same keys for browse, keyword and genre searches.
+  const mimiSort = ({
+    latest: 'updated_at', updated_at: 'updated_at',
+    views: 'views', hot: 'views', popular: 'views',
+    follows: 'follows', likes: 'likes', rating: 'likes', title: 'title'
+  } as Record<string, string>)[sort] || 'updated_at';
 
   // 1. Keyword search
   if (q) {
@@ -202,16 +197,16 @@ export async function getMimiCatalog(filters: MimiCatalogFilters): Promise<Catal
       const match = genresList.find(g => g.name.toLowerCase() === genre.toLowerCase());
       if (match) genreId = match.id;
     }
-    const sortParam = mimiSort ? `&sort=${mimiSort}` : '';
-    endpoint = `/manga/advanced-search?genre=${encodeURIComponent(genreId)}&page=${page}&page_size=${pageSize}${sortParam}`;
+    endpoint = `/manga/advanced-search?genre=${encodeURIComponent(genreId)}&page=${page}&page_size=${pageSize}`;
   } else if (author) {
     // 3. Author search
     endpoint = `/manga/search?q=${encodeURIComponent(author)}&page=${page}&page_size=${pageSize}`;
   } else {
     // 4. Default browse list
-    const sortParam = mimiSort ? `&sort=${mimiSort}` : '';
-    endpoint = `/manga?page=${page}&page_size=${pageSize}${sortParam}`;
+    endpoint = `/manga?page=${page}&page_size=${pageSize}`;
   }
+
+  endpoint += `&sort=${mimiSort}`;
 
   const res = await mimiFetch<{
     items: any[];

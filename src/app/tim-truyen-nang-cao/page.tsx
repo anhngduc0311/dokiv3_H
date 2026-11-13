@@ -29,9 +29,8 @@ export async function generateMetadata({ searchParams }: Props) {
 export default async function SearchPage({ searchParams }: Props) {
   const query = await searchParams;
   const catalog = await searchCatalog({ q: single(query.q), author: single(query.author), genre: single(query.genre),
-    status: single(query.status), country: single(query.country), demographic: single(query.demographic),
-    source: single(query.source), language: single(query.language) || 'vi', sort: single(query.sort) || 'latest',
-    year: single(query.year) ? Number(single(query.year)) : undefined, page: pageNumber(query.page), pageSize: 24 });
+    status: single(query.status), source: single(query.source), sort: single(query.sort) || 'latest',
+    page: pageNumber(query.page), pageSize: 24 });
   return <>
     <JsonLd data={[collectionSchema('Tìm truyện nâng cao', '/tim-truyen-nang-cao', catalog.items)]} />
     <SearchClient key={JSON.stringify(query)} initialCatalog={{ ...catalog, items: catalog.items.map(clientManga) }} />

@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { pageNumber } from '@/lib/seo';
 import { Manga, Page } from '../../types';
 import { api } from '../../lib/api';
-import { useStore } from '../../contexts/store-context';
 import { message } from '../../lib/utils';
 import { Icon } from '../../components/ui/icon';
 import { MangaCard } from '../../components/ui/manga-card';
@@ -14,7 +13,6 @@ import { Pagination } from '../../components/ui/pagination';
 function SearchContent({ initialCatalog }: { initialCatalog: Page<Manga> }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const store = useStore();
 
   const [tags, setTags] = useState<{ id: string; name: string }[]>([]);
   const [items, setItems] = useState<Manga[]>(initialCatalog.items);
@@ -33,14 +31,12 @@ function SearchContent({ initialCatalog }: { initialCatalog: Page<Manga> }) {
     author: searchParams.get('author') || '',
     genre: searchParams.get('genre') || '',
     status: searchParams.get('status') || '',
-    country: searchParams.get('country') || '',
-    demographic: searchParams.get('demographic') || '',
-    language: searchParams.get('language') || store.settings.language || 'vi',
-    year: searchParams.get('year') || '',
-    sort: searchParams.get('sort') || 'latest'
+    sort: searchParams.get('sort') === 'new' ? 'latest' : searchParams.get('sort') || 'latest'
   });
 
   const [form, setForm] = useState(getDefaults);
+  // The upstream search endpoints use a fixed order; only browse supports sort.
+  const fixedSearchOrder = Boolean(searchParams.get('q') || searchParams.get('author') || searchParams.get('genre'));
 
   useEffect(() => {
     void api
@@ -115,10 +111,6 @@ function SearchContent({ initialCatalog }: { initialCatalog: Page<Manga> }) {
       author: '',
       genre: '',
       status: '',
-      country: '',
-      demographic: '',
-      language: store.settings.language || 'vi',
-      year: '',
       sort: 'latest'
     };
     setForm(empty);
@@ -314,60 +306,6 @@ function SearchContent({ initialCatalog }: { initialCatalog: Page<Manga> }) {
               </select>
             </label>
 
-            <label>
-              <span>Quốc gia gốc</span>
-              <select
-                name="country"
-                value={form.country}
-                onChange={e => setForm({ ...form, country: e.target.value })}
-              >
-                <option value="">Tất cả quốc gia</option>
-                <option value="ja">Nhật Bản (Manga)</option>
-                <option value="ko">Hàn Quốc (Manhwa)</option>
-                <option value="zh">Trung Quốc (Manhua)</option>
-                <option value="en">Tiếng Anh (Comic)</option>
-              </select>
-            </label>
-
-            <label>
-              <span>Đối tượng độc giả</span>
-              <select
-                name="demographic"
-                value={form.demographic}
-                onChange={e => setForm({ ...form, demographic: e.target.value })}
-              >
-                <option value="">Tất cả đối tượng</option>
-                <option value="shounen">Shounen (Thiếu niên - Nam)</option>
-                <option value="shoujo">Shoujo (Thiếu nữ - Nữ)</option>
-                <option value="seinen">Seinen (Trưởng thành - Nam)</option>
-                <option value="josei">Josei (Trưởng thành - Nữ)</option>
-              </select>
-            </label>
-
-            <label>
-              <span>Ngôn ngữ bản dịch</span>
-              <select
-                name="language"
-                value={form.language}
-                onChange={e => setForm({ ...form, language: e.target.value })}
-              >
-                <option value="vi">🇻🇳 Tiếng Việt</option>
-                <option value="en">🇬🇧 Tiếng Anh</option>
-              </select>
-            </label>
-
-            <label>
-              <span>Năm phát hành</span>
-              <input
-                type="number"
-                min="1950"
-                max="2030"
-                name="year"
-                value={form.year}
-                onChange={e => setForm({ ...form, year: e.target.value })}
-                placeholder="Ví dụ: 2024"
-              />
-            </label>
           </div>
         )}
 
@@ -376,16 +314,26 @@ function SearchContent({ initialCatalog }: { initialCatalog: Page<Manga> }) {
             <span>Sắp xếp theo</span>
             <select
               name="sort"
-              value={form.sort}
-              onChange={e => setForm({ ...form, sort: e.target.value })}
+              value={fixedSearchOrder ? 'latest' : form.sort}
+              disabled={fixedSearchOrder}
+              aria-describedby={fixedSearchOrder ? 'search-sort-hint' : undefined}
+              onChange={e => {
+                const updated = { ...form, sort: e.target.value };
+                setForm(updated);
+                submit(updated);
+              }}
             >
-              <option value="latest">Mới cập nhật chap</option>
-              <option value="new">Truyện mới đăng</option>
+              <option value="latest">{fixedSearchOrder ? 'Thứ tự kết quả tìm kiếm' : 'Mới cập nhật chap'}</option>
               <option value="hot">Xem nhiều nhất</option>
               <option value="rating">Được thích nhiều nhất</option>
               <option value="follows">Theo dõi nhiều nhất</option>
               <option value="title">Bảng chữ cái (A-Z)</option>
             </select>
+            {fixedSearchOrder && (
+              <small id="search-sort-hint" className="muted">
+                Bỏ lọc từ khóa, tác giả và thể loại để chọn cách sắp xếp.
+              </small>
+            )}
           </label>
 
           <div className="filter-action-buttons">

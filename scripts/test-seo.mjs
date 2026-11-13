@@ -679,3 +679,27 @@ test('detail API returns retryable 503 and the browser recovers from that respon
     if (originalWindow === undefined) delete globalThis.window; else globalThis.window = originalWindow;
   }
 });
+
+test('catalog forwards every supported sort for browse, keyword, author and genre searches', async () => {
+  const originalFetch = globalThis.fetch;
+  const calls = [];
+  globalThis.fetch = async url => {
+    calls.push(new URL(url));
+    return Response.json({ items: [{ id: 123, title: 'Sample', chapter_count: 1 }], total_items: 1, page: 2, page_size: 24 });
+  };
+  try {
+    const load = loader({ './redis': { cacheGet: async () => null, cacheSet: async () => {} } });
+    const { getMimiCatalog } = load('src/lib/mimi-catalog.ts');
+    for (const [sort, expected] of [['latest', 'updated_at'], ['hot', 'views'], ['rating', 'likes'], ['follows', 'follows'], ['title', 'title']]) {
+      for (const filter of [{}, { q: 'Love' }, { author: 'Author' }, { genre: '1' }]) {
+        await getMimiCatalog({ ...filter, sort, page: 2 });
+        const url = calls.at(-1);
+        assert.equal(url.searchParams.get('sort'), expected);
+        assert.equal(url.searchParams.getAll('sort').length, 1);
+        assert.equal(url.searchParams.get('page'), '2');
+        if (filter.q || filter.author) assert.equal(url.searchParams.get('q'), filter.q || filter.author);
+        if (filter.genre) assert.equal(url.searchParams.get('genre'), '1');
+      }
+    }
+  } finally { globalThis.fetch = originalFetch; }
+});
