@@ -989,6 +989,8 @@ function ReaderContent({ initialData }: { initialData: ReaderData | null }) {
                       src={pageUrl(pagesList[singlePageIndex], singlePageIndex)}
                       alt={`Trang ${singlePageIndex + 1}`}
                       decoding="async"
+                      fetchPriority="high"
+                      referrerPolicy="no-referrer"
                       style={{
                         opacity: 1
                       }}

@@ -88,7 +88,6 @@ function MangaDetailContent({ initialManga, initialChaptersLoaded = false }: Man
   const [following, setFollowing] = useState(false);
   const [reading, setReading] = useState(false);
 
-  const preloadedRef = useRef(false);
   const epochRef = useRef(0);
   const chapterEpochRef = useRef(0);
   const cooldownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -168,6 +167,7 @@ function MangaDetailContent({ initialManga, initialChaptersLoaded = false }: Man
     if (cached && cached.items && cached.items.length > 0) {
       setChapters(cached.items);
       setChapterTotal(cached.total || cached.items.length);
+      setFirstChapter(previous => previous ?? cached.items.reduce((first, chapter) => chapter.number < first.number ? chapter : first));
       setChapterLoading(false);
       return;
     }
@@ -179,9 +179,9 @@ function MangaDetailContent({ initialManga, initialChaptersLoaded = false }: Man
       if (n === chapterEpochRef.current && r && Array.isArray(r.items)) {
         setChapters(r.items);
         setChapterTotal(r.total || r.items.length);
-        if (r.items.length > 0 && !firstChapter) {
-          const sorted = [...r.items].sort((a, b) => a.number - b.number);
-          setFirstChapter(sorted[0]);
+        if (r.items.length > 0) {
+          const first = r.items.reduce((earliest, chapter) => chapter.number < earliest.number ? chapter : earliest);
+          setFirstChapter(previous => previous ?? first);
         }
       }
     } catch (e) {
@@ -215,38 +215,33 @@ function MangaDetailContent({ initialManga, initialChaptersLoaded = false }: Man
     }
   };
 
-  const preloadFirstChapter = async () => {
-    if (preloadedRef.current) return;
-    try {
-      const r = await api.request<Page<Chapter>>(
-        `/catalog/${id}/chapters?language=${language}&ascending=true&page=1`,
-        'GET',
-        undefined,
-        true
-      );
-      const first = r.items[0];
-      if (!first) return;
-      setFirstChapter(first);
-      preloadedRef.current = true;
-      const chapterData = await api.request<ReaderData>(`/chapters/${first.id}`);
-      if (!chapterData) return;
-      const pages =
-        (store.settings.dataSaver && chapterData.dataSaverPages?.length
-          ? chapterData.dataSaverPages
-          : chapterData.pages) || [];
-      pages.slice(0, 4).forEach(url => {
-        const img = new Image();
-        img.src = proxyImage(url);
-      });
-    } catch {}
-  };
+  const resumeItem = store.history.find(item => item.mangaId === id);
+  const primaryChapterId = resumeItem?.chapterId || firstChapter?.id;
+  const dataSaver = store.settings.dataSaver;
+
+  useEffect(() => {
+    if (!primaryChapterId) return;
+    let active = true;
+    // Warm only the primary action, after the detail page has had time to paint.
+    const timer = setTimeout(() => {
+      void api.request<ReaderData>(`/chapters/${primaryChapterId}`).then(chapter => {
+        if (!active || !chapter) return;
+        const pages = dataSaver && chapter.dataSaverPages?.length ? chapter.dataSaverPages : chapter.pages;
+        api.preloadImages((pages || []).slice(0, 1).map(proxyImage));
+        router.prefetch(`/chuong/${primaryChapterId}`);
+      }).catch(() => {});
+    }, 250);
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [primaryChapterId, dataSaver, router]);
 
   useEffect(() => {
     if (!id) return;
     setChapterPage(1);
     setCommentPage(1);
     setFirstChapter([...(initialManga?.chapters || [])].sort((a, b) => a.number - b.number)[0] || null);
-    preloadedRef.current = false;
 
     // Check cache for instant rendering
     const cachedManga = api.getCached<Manga>('/catalog/' + id) || (initialManga?.id === id ? initialManga : null);
@@ -271,10 +266,6 @@ function MangaDetailContent({ initialManga, initialChaptersLoaded = false }: Man
 
 
   }, [id]);
-
-  const resume = () => {
-    return store.history.find(x => x.mangaId === id);
-  };
 
   const isChapterRead = (chapterId: string): boolean => {
     return store.history.some(h => h.mangaId === id && h.chapterId === chapterId);
@@ -471,9 +462,8 @@ function MangaDetailContent({ initialManga, initialChaptersLoaded = false }: Man
   const onLanguageChange = (newLang: string) => {
     setLanguage(newLang);
     setChapterPage(1);
-    preloadedRef.current = false;
+    setFirstChapter(null);
     void loadChapters(1, newLang, ascending);
-    void preloadFirstChapter();
   };
 
   const onSortChange = () => {
@@ -482,8 +472,6 @@ function MangaDetailContent({ initialManga, initialChaptersLoaded = false }: Man
     setChapterPage(1);
     void loadChapters(1, language, nextAsc);
   };
-
-  const resumeItem = resume();
 
   return (
     <>
@@ -561,9 +549,10 @@ function MangaDetailContent({ initialManga, initialChaptersLoaded = false }: Man
                   {/* Primary CTAs on Mobile / Desktop */}
                   <div className="detail-hero-actions">
                     {resumeItem ? (
-                      <Link prefetch={false} 
+                      <Link
                         className="primary btn-read-main"
-                        onMouseEnter={preloadFirstChapter}
+                        onMouseEnter={() => router.prefetch(`/chuong/${resumeItem.chapterId}`)}
+                        onFocus={() => router.prefetch(`/chuong/${resumeItem.chapterId}`)}
                         href={`/chuong/${resumeItem.chapterId}`}
                       >
                         <Icon name="play" /> Đọc tiếp {resumeItem.chapterTitle}
@@ -572,7 +561,8 @@ function MangaDetailContent({ initialManga, initialChaptersLoaded = false }: Man
                       <button
                         type="button"
                         className="primary btn-read-main"
-                        onMouseEnter={preloadFirstChapter}
+                        onMouseEnter={() => firstChapter && router.prefetch(`/chuong/${firstChapter.id}`)}
+                        onFocus={() => firstChapter && router.prefetch(`/chuong/${firstChapter.id}`)}
                         onClick={readFirst}
                         disabled={reading}
                       >
@@ -709,9 +699,11 @@ function MangaDetailContent({ initialManga, initialChaptersLoaded = false }: Man
                 <>
                   <div className="chapter-list">
                     {chapters.map(c => (
-                      <Link prefetch={false} 
+                      <Link
                         key={c.id}
                         href={`/chuong/${c.id}`}
+                        onMouseEnter={() => router.prefetch(`/chuong/${c.id}`)}
+                        onFocus={() => router.prefetch(`/chuong/${c.id}`)}
                         className={`chapter-row ${isChapterRead(c.id) ? 'is-read' : ''}`}
                       >
                         <div className="chapter-main-info">
