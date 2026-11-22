@@ -1,20 +1,16 @@
-import { Redis } from '@upstash/redis';
+import Redis from 'ioredis';
 
 const memoryStore = new Map<string, { value: any; expiry: number }>();
 
 let redisClient: Redis | null = null;
 
-const upstashUrl = process.env.UPSTASH_REDIS_REST_URL;
-const upstashToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+const redisUrl = process.env.REDIS_URL;
 
-if (upstashUrl && upstashToken) {
+if (redisUrl) {
   try {
-    redisClient = new Redis({
-      url: upstashUrl,
-      token: upstashToken
-    });
+    redisClient = new Redis(redisUrl, { maxRetriesPerRequest: 2, enableReadyCheck: true });
   } catch (err) {
-    console.warn('[REDIS] Failed to initialize Upstash client, using in-memory fallback:', err);
+    console.warn('[REDIS] Failed to initialize Redis client, using in-memory fallback:', err);
   }
 }
 
@@ -23,7 +19,8 @@ export const redis = redisClient;
 export async function cacheGet<T = any>(key: string): Promise<T | null> {
   if (redisClient) {
     try {
-      const data = await redisClient.get<T>(key);
+      const raw = await redisClient.get(key);
+      const data = raw === null ? null : JSON.parse(raw) as T;
       if (data !== null && data !== undefined) return data;
     } catch (e) {
       // Fallback to memory on network hiccup
@@ -41,7 +38,7 @@ export async function cacheGet<T = any>(key: string): Promise<T | null> {
 export async function cacheSet(key: string, value: any, ttlSeconds: number = 300): Promise<void> {
   if (redisClient) {
     try {
-      await redisClient.set(key, value, { ex: ttlSeconds });
+      await redisClient.set(key, JSON.stringify(value), 'EX', ttlSeconds);
     } catch (e) {
       // Ignore Upstash set errors and set memory
     }

@@ -17,9 +17,11 @@
     "@upstash/redis": "^1.39.0",
     "bcryptjs": "^3.0.3",
     "cheerio": "^1.2.0",
+    "ioredis": "^6.0.0",
     "jsonwebtoken": "^9.0.3",
     "jszip": "^3.10.1",
     "next": "latest",
+    "pg": "^8.23.1",
     "react": "latest",
     "react-dom": "latest",
     "uuid": "^14.0.3"
@@ -27,6 +29,7 @@
   "devDependencies": {
     "@types/jszip": "^3.4.1",
     "@types/node": "^22",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",

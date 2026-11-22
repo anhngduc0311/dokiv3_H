@@ -1,13 +1,37 @@
-import { neon, NeonQueryFunction } from '@neondatabase/serverless';
+import { Pool } from 'pg';
 import bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
 
 const databaseUrl =
   process.env.DATABASE_URL ||
-  'postgresql://neondb_owner:npg_g6oc7HaBNsbG@ep-fragrant-lab-a1g6aad3-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require';
+  'postgresql://doki:doki-postgres-password@postgres:5432/dokihentai';
 
-// Exported singleton neon query function
-export const sql: NeonQueryFunction<false, false> = neon(databaseUrl);
+const pool = new Pool({
+  connectionString: databaseUrl,
+  max: Number(process.env.DB_POOL_MAX || 10),
+  ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : undefined,
+});
+
+type SqlClient = {
+  (strings: TemplateStringsArray, ...values: unknown[]): Promise<any[]>;
+  query(text: string, values?: unknown[]): Promise<any[]>;
+};
+
+function interpolate(strings: TemplateStringsArray, values: unknown[]) {
+  return {
+    text: strings.reduce((query, part, index) => query + part + (index < values.length ? `$${index + 1}` : ''), ''),
+    values,
+  };
+}
+
+const query: SqlClient = (async (strings: TemplateStringsArray, ...values: unknown[]) => {
+  const result = await pool.query(interpolate(strings, values));
+  return result.rows;
+}) as SqlClient;
+
+query.query = async (text, values = []) => (await pool.query(text, values)).rows;
+
+export const sql = query;
 
 let dbInitialized = false;
 let dbInitialization: Promise<void> | null = null;

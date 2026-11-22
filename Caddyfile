@@ -1,0 +1,4 @@
+dokihentai.com, www.dokihentai.com {
+  encode gzip zstd
+  reverse_proxy app:3000
+}
