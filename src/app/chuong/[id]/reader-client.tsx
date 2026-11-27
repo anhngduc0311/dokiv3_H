@@ -22,6 +22,7 @@ const ZOOM_LEVELS: ZoomLevel[] = [
 
 const AUTO_SCROLL_SPEEDS: SpeedLevel[] = [
   { label: '1x (Chậm)', speed: 1 },
+  { label: '1.5x', speed: 1.5 },
   { label: '2x (Vừa)', speed: 2 },
   { label: '3x (Nhanh)', speed: 3 },
   { label: '4x (Rất nhanh)', speed: 4 }
@@ -29,6 +30,7 @@ const AUTO_SCROLL_SPEEDS: SpeedLevel[] = [
 
 const SPEED_PPS: Record<number, number> = {
   1: 45,
+  1.5: 65,
   2: 85,
   3: 140,
   4: 220
@@ -77,8 +79,8 @@ function ReaderContent({ initialData }: { initialData: ReaderData | null }) {
     if (typeof window !== 'undefined') {
       const savedSpeed = localStorage.getItem('td_reader_autoscroll_speed');
       if (savedSpeed !== null) {
-        const s = parseInt(savedSpeed, 10);
-        if (!isNaN(s) && s >= 1 && s <= 4) return s;
+        const speed = Number(savedSpeed);
+        if (AUTO_SCROLL_SPEEDS.some(level => level.speed === speed)) return speed;
       }
     }
     return 2;
